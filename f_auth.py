@@ -1,137 +1,45 @@
-# f_auth.py
-# Auth helpers for Supabase + Streamlit (email OTP).
-# NOTE: Domain constants like ESTADOS live in constants.py now.
-
-from supabase import create_client, Client
 import streamlit as st
+from supabase import create_client, Client
 import os
-from typing import Optional, Set, Dict, Any, Mapping, Union, List
+from typing import Optional, Set, Dict, Any
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 
-# ---------- Client management ----------
+# ---------- Client ----------
 
 @st.cache_resource(show_spinner=False)
-def base_client() -> Client:
-    """Singleton Supabase client (no session attached)."""
+def get_client() -> Client:
+    """Return a Supabase client using the anon key."""
     if not SUPABASE_URL or not SUPABASE_ANON_KEY:
         raise RuntimeError("Missing SUPABASE_URL or SUPABASE_ANON_KEY env vars.")
     return create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 
-def _attach_session(sb: Client) -> None:
-    """Attach the saved session (if any) to the client so RLS sees auth.uid()."""
-    sess = st.session_state.get("sb_session")
-    if not sess:
-        return
-    at, rt = sess.get("access_token"), sess.get("refresh_token")
-    if at and rt:
-        try:
-            sb.auth.set_session(at, rt)
-        except Exception:
-            # best-effort; UI guards will still block access
-            pass
+# ---------- Login / Session ----------
 
-
-def get_client(use_session: bool = True) -> Client:
-    """
-    Return a Supabase client. If use_session=False, do NOT attach any JWT.
-    If use_session=True and a session exists, attach it and try refreshing if needed.
-    """
-    sb = base_client()
-    if not use_session:
-        return sb
-
-    sess = st.session_state.get("sb_session")
-    if not (sess and sess.get("access_token") and sess.get("refresh_token")):
-        return sb
-
-    try:
-        # attach current tokens
-        sb.auth.set_session(sess["access_token"], sess["refresh_token"])
-        cur = sb.auth.get_session()
-        # if missing/invalid, try refresh
-        if not cur or not getattr(cur, "user", None):
-            sb.auth.refresh_session()
-            cur = sb.auth.get_session()
-
-        # persist refreshed tokens back into session state
-        if cur and getattr(cur, "user", None):
-            st.session_state["sb_session"] = {
-                "access_token": cur.access_token,
-                "refresh_token": cur.refresh_token,
-                "user": {"id": cur.user.id, "email": cur.user.email},
-            }
-        else:
-            # drop bad session
-            st.session_state.pop("sb_session", None)
-    except Exception:
-        st.session_state.pop("sb_session", None)
-
-    return sb
-
-
-
-# ---------- Session helpers ----------
-
-def _store_session_from_client(sb: Client) -> Optional[Dict[str, Any]]:
-    """Read the session from the client and persist into session_state."""
-    session = sb.auth.get_session()
-    if session and session.user:
-        st.session_state["sb_session"] = {
-            "access_token": session.access_token,
-            "refresh_token": session.refresh_token,
-            "user": {"id": session.user.id, "email": session.user.email},
-        }
-        return st.session_state["sb_session"]
+def login(email: str, password: str) -> Optional[Dict[str, Any]]:
+    """Validate email/password against users table. Returns user row or None."""
+    sb = get_client()
+    res = (
+        sb.table("users")
+        .select("id,email")
+        .eq("email", (email or "").strip())
+        .eq("password", (password or "").strip())
+        .limit(1)
+        .execute()
+    )
+    rows = res.data or []
+    if rows:
+        user = rows[0]
+        st.session_state["user"] = user
+        return user
     return None
 
 
-def _first(qv: Union[str, List[str]]) -> str:
-    """Return first value if a list is passed (Streamlit query params can be listy)."""
-    return qv[0] if isinstance(qv, list) else qv
-
-
-# ---------- OTP / Magic Link ----------
-
-def send_login_otp(email: str) -> Dict[str, Any]:
-    """
-    Request an OTP / magic link for the email.
-    shouldCreateUser=True allows first-time signups via OTP.
-    """
-    sb = get_client()
-    return sb.auth.sign_in_with_otp({"email": email, "shouldCreateUser": True})
-
-
-def verify_otp(email: str, code: str) -> Optional[Dict[str, Any]]:
-    """Verify a 6-digit OTP code and persist the session."""
-    sb = get_client()
-    sb.auth.verify_otp({"email": email, "token": code, "type": "email"})
-    return _store_session_from_client(sb)
-
-
-def set_session_from_query_params() -> bool:
-    """
-    If using magic link redirects, capture access/refresh tokens from the URL
-    and set the session. Returns True if a session was stored.
-    """
-    qp: Mapping[str, Union[str, List[str]]] = st.query_params  # Streamlit ≥ 1.27
-    if "access_token" in qp and "refresh_token" in qp:
-        at = _first(qp["access_token"])
-        rt = _first(qp["refresh_token"])
-        sb = get_client()
-        sb.auth.set_session(at, rt)
-        return _store_session_from_client(sb) is not None
-    return False
-
-
-# ---------- Role helpers ----------
-
 def current_user() -> Optional[Dict[str, Any]]:
-    """Return {'id', 'email'} for the logged-in user, or None."""
-    sess = st.session_state.get("sb_session")
-    return sess.get("user") if sess else None
+    """Return {'id','email'} for the logged-in user, or None."""
+    return st.session_state.get("user")
 
 # --- Role helpers (Spanish) ---
 
@@ -197,11 +105,6 @@ def require_lector():
 
 
 def sign_out():
-    """Clear the Supabase session and any cached role data."""
-    sb = get_client()
-    try:
-        sb.auth.sign_out()
-    except Exception:
-        pass
-    for k in ("sb_session", "roles_cache"):
+    """Clear stored user info and role cache."""
+    for k in ("user", "roles_cache"):
         st.session_state.pop(k, None)

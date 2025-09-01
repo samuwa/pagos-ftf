@@ -7,7 +7,7 @@ import streamlit as st
 from supabase import create_client
 from f_auth import require_administrador, current_user, get_client
 from f_read import get_all_users, list_suppliers
-from f_cud import assign_role, remove_role, add_app_user, create_supplier
+from f_cud import assign_role, remove_role, add_app_user, create_supplier, update_user_password
 
 st.set_page_config(page_icon="🛡️", layout="wide")
 require_administrador()
@@ -32,7 +32,7 @@ def get_admin_client():
 
 ADMIN_CLIENT = get_admin_client()
 
-tab_crear, tab_editar, tab_prov = st.tabs(["Crear usuario", "Editar usuario", "Proveedores"])
+tab_crear, tab_editar, tab_pass, tab_prov = st.tabs(["Crear usuario", "Editar usuario", "Actualizar contraseña", "Proveedores"])
 
 # =======================
 # Tab 1: Crear usuario
@@ -177,7 +177,30 @@ with tab_editar:
                 st.error(f"Error al guardar cambios: {e}")
 
 # =======================
-# Tab 3: Proveedores
+# Tab 3: Actualizar contraseña
+# =======================
+with tab_pass:
+    users = get_all_users()
+    emails = [u["email"] for u in users]
+    if not emails:
+        st.info("Aún no hay usuarios.")
+    else:
+        with st.form("password_form", clear_on_submit=True):
+            email = st.selectbox("Selecciona un usuario", emails)
+            new_pwd = st.text_input("Nueva contraseña", type="password")
+            submitted = st.form_submit_button("Actualizar")
+            if submitted:
+                if not new_pwd:
+                    st.error("La contraseña no puede estar vacía.")
+                else:
+                    try:
+                        update_user_password(email, new_pwd)
+                        st.success("Contraseña actualizada.")
+                    except Exception as e:
+                        st.error(f"No se pudo actualizar: {e}")
+
+# =======================
+# Tab 4: Proveedores
 # =======================
 with tab_prov:
 

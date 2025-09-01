@@ -19,6 +19,15 @@ def delete_app_user(email: str) -> None:
     email_norm = (email or "").strip().lower()
     sb.schema("public").table("app_users").delete().eq("email", email_norm).execute()
 
+# ------------- Passwords -------------
+
+def update_user_password(email: str, new_password: str) -> None:
+    sb = get_client()
+    email_norm = (email or "").strip()
+    if not email_norm:
+        raise ValueError("Correo inválido.")
+    sb.schema("public").table("users").update({"password": new_password}).eq("email", email_norm).execute()
+
 # ------------- Roles (user_roles) -------------
 
 VALID_ROLES = {"administrador", "solicitante", "aprobador", "pagador", "lector"}

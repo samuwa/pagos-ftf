@@ -7,10 +7,8 @@ import streamlit as st
 import os
 from typing import Optional, Set, Dict, Any, Mapping, Union, List
 
-# SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-# SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
-SUPABASE_URL = "https://rgjukiqguzxdwgubnzav.supabase.co"
-SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnanVraXFndXp4ZHdndWJuemF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2MTg4MzMsImV4cCI6MjA3MTE5NDgzM30.5PhmqebGCcR21cFOSMaQfSUgiLx6XKTs4x5bwOlYhgs"
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 
 # ---------- Client management ----------
 

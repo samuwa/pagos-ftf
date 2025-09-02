@@ -141,9 +141,9 @@ with tab2:
             f"**Solicitante:** {exp.get('requested_by_email','')}"
         )
 
-        rec_key = exp.get("supporting_doc_key") or ""
+        rec_key = exp.get("supporting_doc_key")
 
-        pay_key = exp.get("payment_doc_key") or ""
+        pay_key = exp.get("payment_doc_key")
         cols_files = st.columns(2)
         with cols_files[0]:
             _render_download(rec_key, "Documento de respaldo", signed_url_for_receipt)
@@ -309,9 +309,9 @@ with tab3:
             f"**Solicitante:** {exp.get('requested_by_email','')}  \n"
             f"**Creado:** {_fmt_dt(exp['created_at'])}"
         )
-        rec_key = exp.get("supporting_doc_key") or ""
+        rec_key = exp.get("supporting_doc_key")
 
-        pay_key = exp.get("payment_doc_key") or ""
+        pay_key = exp.get("payment_doc_key")
         cols_files = st.columns(2)
         with cols_files[0]:
             _render_download(rec_key, "Documento de respaldo", signed_url_for_receipt)

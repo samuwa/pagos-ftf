@@ -22,8 +22,6 @@ from f_read import (
     list_expenses_by_requester,
     signed_url_for_receipt,
     signed_url_for_payment,
-    receipt_file_key,
-    payment_file_key,
 )
 
 from f_cud import mark_expense_as_paid, add_expense_comment
@@ -179,15 +177,15 @@ with tab2:
 
         # Quote/recibo
         st.caption("Documento de respaldo")
-        rec_key = receipt_file_key(exp.get("supporting_doc_key") or "")
-        rec_url = signed_url_for_receipt(exp.get("supporting_doc_key") or "", 600)
+        rec_key = exp.get("supporting_doc_key") or ""
+        rec_url = signed_url_for_receipt(rec_key, 600)
         _render_preview_if_pdf(rec_url, rec_key or "", "documento de respaldo")
 
         # Comprobante de pago (si existe)
         if exp.get("payment_doc_key"):
             st.caption("Comprobante de pago")
-            pay_key = payment_file_key(exp.get("payment_doc_key") or "")
-            pay_url = signed_url_for_payment(exp.get("payment_doc_key") or "", 600)
+            pay_key = exp.get("payment_doc_key") or ""
+            pay_url = signed_url_for_payment(pay_key, 600)
             _render_preview_if_pdf(pay_url, pay_key or "", "comprobante de pago")
 
         st.divider()
@@ -242,18 +240,26 @@ with tab2:
                         st.error("Debes adjuntar un comprobante para marcar como pagado.")
                         st.stop()
 
-                    # Subir archivo al bucket 'payments' en una CARPETA y guardar la carpeta
+                    # Subir archivo al bucket 'payments' y guardar la key completa
                     sb = get_client()
                     bucket = "payments"
                     folder = f"{expense_id}/pago-{uuid.uuid4().hex}"
                     file_path = f"{folder}/{pay_file.name}"
-                    sb.storage.from_(bucket).upload(file_path, pay_file.getvalue())
+                    res = sb.storage.from_(bucket).upload(file_path, pay_file.getvalue())
+                    stored_key = (
+                        (getattr(res, "path", None) if res else None)
+                        or (getattr(res, "Key", None) if res else None)
+                        or (getattr(res, "key", None) if res else None)
+                        or (res.get("path") if isinstance(res, dict) else None)
+                        or (res.get("Key") if isinstance(res, dict) else None)
+                        or file_path
+                    )
 
                     # Actualizar estado + payment_doc_key y log
                     mark_expense_as_paid(
                         expense_id=expense_id,
                         actor_id=user_id,
-                        payment_doc_folder=folder,
+                        payment_doc_key=stored_key,
                         comment=(comment or "").strip() or None,
                     )
                     st.success("Solicitud marcada como pagada.")
@@ -350,14 +356,14 @@ with tab3:
             f"**Creado:** {_fmt_dt(exp['created_at'])}"
         )
         st.caption("Documento de respaldo")
-        rec_key = receipt_file_key(exp.get("supporting_doc_key") or "")
-        rec_url = signed_url_for_receipt(exp.get("supporting_doc_key") or "", 600)
+        rec_key = exp.get("supporting_doc_key") or ""
+        rec_url = signed_url_for_receipt(rec_key, 600)
         _render_preview_if_pdf(rec_url, rec_key or "", "documento de respaldo")
 
         if exp.get("payment_doc_key"):
             st.caption("Comprobante de pago")
-            pay_key = payment_file_key(exp.get("payment_doc_key") or "")
-            pay_url = signed_url_for_payment(exp.get("payment_doc_key") or "", 600)
+            pay_key = exp.get("payment_doc_key") or ""
+            pay_url = signed_url_for_payment(pay_key, 600)
             _render_preview_if_pdf(pay_url, pay_key or "", "comprobante de pago")
 
         st.divider()

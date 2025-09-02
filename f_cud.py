@@ -127,6 +127,8 @@ def create_expense(
 ) -> Optional[str]:
     """
     Crea un expense (status 'solicitado') con descripción opcional.
+    ``supporting_doc_key`` debe ser la ruta completa del archivo en el
+    bucket de Storage (p.ej. ``"user/uuid/archivo.pdf"``).
     """
     sb = get_client()
     payload = {
@@ -134,7 +136,7 @@ def create_expense(
         "supplier_id": supplier_id,
         "amount": round(float(amount), 2),
         "category": category,
-        "supporting_doc_key": supporting_doc_key,
+        "supporting_doc_key": (supporting_doc_key or "").strip(),
     }
     if description:
         payload["description"] = description
@@ -206,19 +208,25 @@ def update_expense_status(expense_id: str, actor_id: str, new_status: str, comme
         msg += f"; {comment}"
     create_expense_log(expense_id, actor_id, action="update", message=msg)
 
-def mark_expense_as_paid(expense_id: str, actor_id: str, payment_doc_folder: str, comment: Optional[str] = None) -> None:
+def mark_expense_as_paid(
+    expense_id: str,
+    actor_id: str,
+    payment_doc_key: str,
+    comment: Optional[str] = None,
+) -> None:
     """
-    Actualiza el expense a 'pagado', setea payment_doc_key con la CARPETA y registra un log.
-    Requiere que el comprobante haya sido subido previamente a 'quotes/{folder}/archivo'.
+    Actualiza el expense a 'pagado', guarda ``payment_doc_key`` con la **ruta completa del archivo**
+    subido en el bucket ``payments`` y registra un log.
     """
-    if not (expense_id and actor_id and (payment_doc_folder or "").strip()):
+    if not (expense_id and actor_id and (payment_doc_key or "").strip()):
         raise ValueError("Faltan datos para marcar como pagado.")
+
     sb = get_client()
     sb.schema("public").table("expenses").update(
-        {"status": "pagado", "payment_doc_key": payment_doc_folder.strip(), "paid_by": actor_id}
+        {"status": "pagado", "payment_doc_key": payment_doc_key.strip(), "paid_by": actor_id}
     ).eq("id", expense_id).execute()
 
-    msg = f"status -> pagado; folder={payment_doc_folder}"
+    msg = f"status -> pagado; key={payment_doc_key}"
     if comment:
         msg += f"; {comment}"
     create_expense_log(expense_id, actor_id, action="update", message=msg)

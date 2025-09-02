@@ -2,6 +2,8 @@
 # Rol Aprobador: métricas, listas por estado, detalles+actualizar, historial
 
 import os
+import uuid
+
 import pandas as pd
 import streamlit as st
 from f_auth import require_aprobador, current_user
@@ -36,6 +38,7 @@ ESTADOS = ["solicitado", "aprobado", "rechazado", "pagado"]
 
 
 def _render_download(url: str, key: str, label: str):
+    dl_key = f"dl-{label}-{uuid.uuid4().hex}"
     if url:
         st.link_button(f"Abrir {label}", url, use_container_width=True)
         try:
@@ -46,6 +49,7 @@ def _render_download(url: str, key: str, label: str):
                 resp.content,
                 file_name=os.path.basename(key) if key else label.replace(" ", "_"),
                 use_container_width=True,
+                key=dl_key,
             )
         except Exception as e:
             st.caption(f"No se pudo descargar {label}: {e}")
@@ -55,6 +59,7 @@ def _render_download(url: str, key: str, label: str):
             b"",
             use_container_width=True,
             disabled=True,
+            key=dl_key,
         )
 
 # ---------------------------------------------------

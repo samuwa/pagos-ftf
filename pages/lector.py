@@ -2,6 +2,8 @@
 # Rol Lector: dashboard con filtros por fechas, comparativas y detalle
 
 import os
+import uuid
+
 import requests
 import pandas as pd
 import streamlit as st
@@ -35,6 +37,7 @@ def _fmt_dt(dt_str: str) -> str:
 
 def _render_download(url: str, file_key: str, title: str):
     """Renderiza link y botón de descarga; deshabilita si no hay archivo."""
+    dl_key = f"dl-{title}-{uuid.uuid4().hex}"
     if url:
         st.link_button(f"Abrir {title} en pestaña nueva", url, use_container_width=True)
         try:
@@ -45,6 +48,7 @@ def _render_download(url: str, file_key: str, title: str):
                 resp.content,
                 file_name=os.path.basename(file_key) if file_key else title.replace(" ", "_"),
                 use_container_width=True,
+                key=dl_key,
             )
         except Exception as e:
             st.caption(f"No se pudo obtener el archivo de {title}: {e}")
@@ -55,6 +59,7 @@ def _render_download(url: str, file_key: str, title: str):
             file_name=title.replace(" ", "_"),
             use_container_width=True,
             disabled=True,
+            key=dl_key,
         )
 
 # --------------------------

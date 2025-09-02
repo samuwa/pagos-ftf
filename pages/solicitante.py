@@ -229,6 +229,7 @@ with tab_detalle:
                     resp.content,
                     file_name=os.path.basename(rec_key) if rec_key else "recibo",
                     use_container_width=True,
+                    key=f"dl-recibo-{uuid.uuid4().hex}",
                 )
             except Exception as e:
                 st.caption(f"No se pudo descargar el recibo: {e}")
@@ -239,6 +240,7 @@ with tab_detalle:
                 file_name="recibo",
                 use_container_width=True,
                 disabled=True,
+                key=f"dl-recibo-{uuid.uuid4().hex}",
             )
     with colf2:
         if pay_url:
@@ -251,6 +253,7 @@ with tab_detalle:
                     resp.content,
                     file_name=os.path.basename(pay_key) if pay_key else "comprobante",
                     use_container_width=True,
+                    key=f"dl-comprobante-{uuid.uuid4().hex}",
                 )
             except Exception as e:
                 st.caption(f"No se pudo descargar el comprobante: {e}")
@@ -261,6 +264,7 @@ with tab_detalle:
                 file_name="comprobante",
                 use_container_width=True,
                 disabled=True,
+                key=f"dl-comprobante-{uuid.uuid4().hex}",
             )
 
     st.divider()

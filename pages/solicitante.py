@@ -96,11 +96,13 @@ with tab_nueva:
 
                 res = sb.storage.from_(bucket).upload(file_path, file.getvalue())
                 stored_key = (
+
                     (getattr(res, "path", None) if res else None)
                     or (getattr(res, "Key", None) if res else None)
                     or (getattr(res, "key", None) if res else None)
                     or (res.get("path") if isinstance(res, dict) else None)
                     or (res.get("Key") if isinstance(res, dict) else None)
+
                     or file_path
                 )
 

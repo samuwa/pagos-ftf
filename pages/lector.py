@@ -239,7 +239,9 @@ with tab_detalle:
     st.caption("Documento de respaldo")
     rec_key = row.get("supporting_doc_key") or ""
     rec_url = signed_url_for_receipt(rec_key, 600)
+
     _render_download(rec_url, rec_key or "", "documento de respaldo")
+
 
     st.caption("Comprobante de pago")
     pay_key = row.get("payment_doc_key") or ""

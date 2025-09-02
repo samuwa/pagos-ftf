@@ -175,6 +175,7 @@ with tab2:
         pay_url = signed_url_for_payment(pay_key, 600)
         _render_download(pay_url, pay_key, "comprobante de pago")
 
+
         st.divider()
         st.subheader("Historial (logs)")
         logs = list_expense_logs(expense_id)
@@ -234,11 +235,13 @@ with tab2:
                     file_path = f"{folder}/{pay_file.name}"
                     res = sb.storage.from_(bucket).upload(file_path, pay_file.getvalue())
                     stored_key = (
+
                         (getattr(res, "path", None) if res else None)
                         or (getattr(res, "Key", None) if res else None)
                         or (getattr(res, "key", None) if res else None)
                         or (res.get("path") if isinstance(res, dict) else None)
                         or (res.get("Key") if isinstance(res, dict) else None)
+
                         or file_path
                     )
 
@@ -345,12 +348,14 @@ with tab3:
         st.caption("Documento de respaldo")
         rec_key = exp.get("supporting_doc_key") or ""
         rec_url = signed_url_for_receipt(rec_key, 600)
+
         _render_download(rec_url, rec_key, "documento de respaldo")
 
         st.caption("Comprobante de pago")
         pay_key = exp.get("payment_doc_key") or ""
         pay_url = signed_url_for_payment(pay_key, 600)
         _render_download(pay_url, pay_key, "comprobante de pago")
+
 
         st.divider()
         logs = list_expense_logs(eid)

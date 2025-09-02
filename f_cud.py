@@ -217,6 +217,7 @@ def mark_expense_as_paid(
     """
     Actualiza el expense a 'pagado', guarda ``payment_doc_key`` con la **ruta completa del archivo**
     subido en el bucket ``payments`` y registra un log.
+
     """
     if not (expense_id and actor_id and (payment_doc_key or "").strip()):
         raise ValueError("Faltan datos para marcar como pagado.")

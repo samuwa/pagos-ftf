@@ -3,13 +3,12 @@
 
 import pandas as pd
 import streamlit as st
-from f_auth import require_aprobador, current_user
+from f_auth import require_aprobador, current_user, get_client
 from f_read import (
     list_expenses_for_status,          # -> for metrics/table in Tab 1
     get_expense_by_id_for_approver,    # -> full row for details
     list_expense_logs,
     list_expense_comments,
-    signed_url_for_receipt,
     signed_url_for_payment,
     list_suppliers,
     list_categories_from_expenses,
@@ -132,8 +131,6 @@ with tab2:
     with left:
         rec_key = exp.get("supporting_doc_key") or ""
         pay_key = exp.get("payment_doc_key") or ""
-        rec_url = signed_url_for_receipt(rec_key, 600)
-        pay_url = signed_url_for_payment(pay_key, 600)
         details_md = (
             f"**Proveedor:** {exp['supplier_name']}  \n"
             f"**Descripción:** {exp.get('description','')}  \n"
@@ -146,8 +143,15 @@ with tab2:
         st.markdown(details_md)
         cols_files = st.columns(2)
         with cols_files[0]:
-            _render_download(rec_url, rec_key, "Documento de respaldo")
+            if rec_key:
+                sb = get_client()
+                out = sb.storage.from_("quotes").create_signed_url(rec_key, 600)
+                rec_url = (out or {}).get("signed_url")
+                _render_download(rec_url, rec_key, "Documento de respaldo")
+            else:
+                st.warning("No se encontró archivo")
         with cols_files[1]:
+            pay_url = signed_url_for_payment(pay_key, 600)
             _render_download(pay_url, pay_key, "Comprobante de pago")
 
         st.divider()
@@ -299,12 +303,17 @@ with tab3:
         )
         rec_key = exp.get("supporting_doc_key") or ""
         pay_key = exp.get("payment_doc_key") or ""
-        rec_url = signed_url_for_receipt(rec_key, 600)
-        pay_url = signed_url_for_payment(pay_key, 600)
         cols_files = st.columns(2)
         with cols_files[0]:
-            _render_download(rec_url, rec_key, "Documento de respaldo")
+            if rec_key:
+                sb = get_client()
+                out = sb.storage.from_("quotes").create_signed_url(rec_key, 600)
+                rec_url = (out or {}).get("signed_url")
+                _render_download(rec_url, rec_key, "Documento de respaldo")
+            else:
+                st.warning("No se encontró archivo")
         with cols_files[1]:
+            pay_url = signed_url_for_payment(pay_key, 600)
             _render_download(pay_url, pay_key, "Comprobante de pago")
 
         st.divider()

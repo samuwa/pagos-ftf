@@ -127,8 +127,9 @@ def create_expense(
 ) -> Optional[str]:
     """
     Crea un expense (status 'solicitado') con descripción opcional.
-    ``supporting_doc_key`` debe ser la ruta completa del archivo en el
-    bucket de Storage (p.ej. ``"user/uuid/archivo.pdf"``).
+    ``supporting_doc_key`` debe ser el nombre de archivo UUID ubicado en la
+    raíz del bucket de Storage (p.ej. ``"uuid.pdf"``); ya no incluye una ruta
+    de carpeta.
     """
     sb = get_client()
     payload = {
@@ -215,8 +216,9 @@ def mark_expense_as_paid(
     comment: Optional[str] = None,
 ) -> None:
     """
-    Actualiza el expense a 'pagado', guarda ``payment_doc_key`` con la **ruta completa del archivo**
-    subido en el bucket ``payments`` y registra un log.
+    Actualiza el expense a 'pagado', guarda ``payment_doc_key`` con el nombre
+    de archivo UUID en la raíz del bucket ``payments`` (sin ruta de carpeta) y
+    registra un log.
 
     """
     if not (expense_id and actor_id and (payment_doc_key or "").strip()):

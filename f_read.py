@@ -3,7 +3,43 @@ from typing import List, Dict, Any, Optional, Tuple, Set, Iterable
 from f_auth import get_client
 from collections import defaultdict
 import datetime as dt
+import os
+import uuid
+import requests
 import pandas as pd
+
+# --------------------------
+# Utilidades de UI
+# --------------------------
+def _render_download(url: str, key: str, label: str) -> None:
+    """Renderiza un botón de descarga para una URL firmada.
+
+    Si ``url`` es válida, intenta descargar el contenido para exponerlo a ``st.download_button``.
+    En caso contrario, muestra el botón deshabilitado. El texto del botón es ``label``.
+    """
+
+    dl_key = f"dl-{label}-{uuid.uuid4().hex}"
+    if url:
+        try:
+            resp = requests.get(url, timeout=10)
+            resp.raise_for_status()
+            st.download_button(
+                label,
+                resp.content,
+                file_name=os.path.basename(key) if key else label.replace(" ", "_"),
+                key=dl_key,
+                width="content",
+            )
+        except Exception as e:  # pragma: no cover - UI feedback
+            st.caption(f"No se pudo descargar {label}: {e}")
+    else:
+        st.download_button(
+            label,
+            b"",
+            key=dl_key,
+            disabled=True,
+            width="content",
+        )
 
 # ==========================
 # ==== AUTH AND ADMIN ======

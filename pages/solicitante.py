@@ -15,8 +15,6 @@ from f_read import (
     recent_similar_expenses,
     signed_url_for_receipt,
     signed_url_for_payment,
-    receipt_file_key,
-    payment_file_key,
     get_my_expense,
     list_expense_comments,
     list_expense_logs,
@@ -96,14 +94,22 @@ with tab_nueva:
                 file_name = file.name                                 # preserva nombre original
                 file_path = f"{folder}/{file_name}"                   # archivo dentro de la carpeta
 
-                sb.storage.from_(bucket).upload(file_path, file.getvalue())
+                res = sb.storage.from_(bucket).upload(file_path, file.getvalue())
+                stored_key = (
+                    (getattr(res, "path", None) if res else None)
+                    or (getattr(res, "Key", None) if res else None)
+                    or (getattr(res, "key", None) if res else None)
+                    or (res.get("path") if isinstance(res, dict) else None)
+                    or (res.get("Key") if isinstance(res, dict) else None)
+                    or file_path
+                )
 
                 expense_id = create_expense(
                     requested_by=user_id,
                     supplier_id=supplier_id,
                     amount=float(Decimal(str(amount))),
                     category=categoria,
-                    supporting_doc_key=folder,  # <<< guardamos SOLO la carpeta
+                    supporting_doc_key=stored_key,  # guardamos la key completa
                     description=descripcion.strip() if descripcion else None,
                 )
 
@@ -205,10 +211,10 @@ with tab_detalle:
 )
 
     # Enlaces rápidos a archivos
-    rec_key = receipt_file_key(exp.get("supporting_doc_key") or "")
-    pay_key = payment_file_key(exp.get("payment_doc_key") or "")
-    rec_url = signed_url_for_receipt(exp.get("supporting_doc_key") or "", 600)
-    pay_url = signed_url_for_payment(exp.get("payment_doc_key") or "", 600)
+    rec_key = exp.get("supporting_doc_key") or ""
+    pay_key = exp.get("payment_doc_key") or ""
+    rec_url = signed_url_for_receipt(rec_key, 600)
+    pay_url = signed_url_for_payment(pay_key, 600)
     colf1, colf2 = st.columns(2)
     with colf1:
         if rec_url:
@@ -224,6 +230,14 @@ with tab_detalle:
                 )
             except Exception as e:
                 st.caption(f"No se pudo descargar el recibo: {e}")
+        else:
+            st.download_button(
+                "Descargar recibo",
+                b"",
+                file_name="recibo",
+                use_container_width=True,
+                disabled=True,
+            )
     with colf2:
         if pay_url:
             st.link_button("Ver comprobante de pago", pay_url, use_container_width=True)
@@ -238,6 +252,14 @@ with tab_detalle:
                 )
             except Exception as e:
                 st.caption(f"No se pudo descargar el comprobante: {e}")
+        else:
+            st.download_button(
+                "Descargar comprobante",
+                b"",
+                file_name="comprobante",
+                use_container_width=True,
+                disabled=True,
+            )
 
     st.divider()
 

@@ -1,6 +1,7 @@
 # pages/aprobador.py
 # Rol Aprobador: métricas, listas por estado, detalles+actualizar, historial
 
+import os
 import pandas as pd
 import streamlit as st
 from f_auth import require_aprobador, current_user
@@ -10,19 +11,16 @@ from f_read import (
     list_expense_logs,
     list_expense_comments,
     signed_url_for_receipt,
+    signed_url_for_payment,
     list_suppliers,
     list_categories_from_expenses,
     list_requesters_for_approver,
     list_expenses_by_supplier_id,
     list_expenses_by_category,
     list_expenses_by_requester,
-    receipt_file_key,
-    signed_url_for_receipt,
-    render_quote_preview_if_pdf,
 )
 from f_cud import update_expense_status, add_expense_comment
 import requests
-from streamlit_pdf_viewer import pdf_viewer
 
 
 
@@ -35,6 +33,29 @@ if not me:
 user_id = me["id"]
 
 ESTADOS = ["solicitado", "aprobado", "rechazado", "pagado"]
+
+
+def _render_download(url: str, key: str, label: str):
+    if url:
+        st.link_button(f"Abrir {label}", url, use_container_width=True)
+        try:
+            resp = requests.get(url, timeout=10)
+            resp.raise_for_status()
+            st.download_button(
+                f"Descargar {label}",
+                resp.content,
+                file_name=os.path.basename(key) if key else label.replace(" ", "_"),
+                use_container_width=True,
+            )
+        except Exception as e:
+            st.caption(f"No se pudo descargar {label}: {e}")
+    else:
+        st.download_button(
+            f"Descargar {label}",
+            b"",
+            use_container_width=True,
+            disabled=True,
+        )
 
 # ---------------------------------------------------
 # Tab 1 — Solicitudes
@@ -133,7 +154,10 @@ with tab2:
 
     # ---- Left: details, logs, comments
     with left:
-        rec_url = signed_url_for_receipt(exp.get("supporting_doc_key") or "", 600)
+        rec_key = exp.get("supporting_doc_key") or ""
+        pay_key = exp.get("payment_doc_key") or ""
+        rec_url = signed_url_for_receipt(rec_key, 600)
+        pay_url = signed_url_for_payment(pay_key, 600)
         details_md = (
             f"**Proveedor:** {exp['supplier_name']}  \n"
             f"**Descripción:** {exp.get('description','')}  \n"
@@ -143,11 +167,13 @@ with tab2:
             f"**Creado:** {_fmt_dt(exp['created_at'])}  \n"
             f"**Solicitante:** {exp.get('requested_by_email','')}"
         )
-        if rec_url:
-            details_md += f"  \n**Documento de respaldo:** [Descargar]({rec_url})"
         st.markdown(details_md)
 
-        render_quote_preview_if_pdf(exp.get("supporting_doc_key") or "")
+        st.caption("Documento de respaldo")
+        _render_download(rec_url, rec_key, "documento de respaldo")
+
+        st.caption("Comprobante de pago")
+        _render_download(pay_url, pay_key, "comprobante de pago")
 
         st.divider()
         st.subheader("Historial (logs)")
@@ -296,10 +322,14 @@ with tab3:
             f"**Solicitante:** {exp.get('requested_by_email','')}  \n"
             f"**Creado:** {_fmt_dt(exp['created_at'])}"
         )
-        rec_url = signed_url_for_receipt(exp.get("supporting_doc_key") or "", 600)
-        render_quote_preview_if_pdf(exp.get("supporting_doc_key") or "")
-        if rec_url:
-            st.link_button("Ver documento de respaldo", rec_url, use_container_width=True)
+        rec_key = exp.get("supporting_doc_key") or ""
+        pay_key = exp.get("payment_doc_key") or ""
+        rec_url = signed_url_for_receipt(rec_key, 600)
+        pay_url = signed_url_for_payment(pay_key, 600)
+        st.caption("Documento de respaldo")
+        _render_download(rec_url, rec_key, "documento de respaldo")
+        st.caption("Comprobante de pago")
+        _render_download(pay_url, pay_key, "comprobante de pago")
 
         st.divider()
         logs = list_expense_logs(eid)

@@ -1,10 +1,6 @@
 # pages/lector.py
 # Rol Lector: dashboard con filtros por fechas, comparativas y detalle
 
-import os
-import uuid
-
-import requests
 import pandas as pd
 import streamlit as st
 
@@ -17,6 +13,7 @@ from f_read import (
     list_paid_expenses_enriched,    # NUEVO helper abajo
     signed_url_for_receipt,
     signed_url_for_payment,
+    _render_download,
 )
 
 st.set_page_config(page_title="Lector", page_icon="📊", layout="wide")
@@ -34,33 +31,6 @@ def _fmt_dt(dt_str: str) -> str:
         return pd.to_datetime(dt_str).strftime("%Y-%m-%d %H:%M")
     except Exception:
         return dt_str
-
-def _render_download(url: str, file_key: str, title: str):
-    """Renderiza link y botón de descarga; deshabilita si no hay archivo."""
-    dl_key = f"dl-{title}-{uuid.uuid4().hex}"
-    if url:
-        st.link_button(f"Abrir {title} en pestaña nueva", url, use_container_width=True)
-        try:
-            resp = requests.get(url, timeout=10)
-            resp.raise_for_status()
-            st.download_button(
-                f"Descargar {title}",
-                resp.content,
-                file_name=os.path.basename(file_key) if file_key else title.replace(" ", "_"),
-                use_container_width=True,
-                key=dl_key,
-            )
-        except Exception as e:
-            st.caption(f"No se pudo obtener el archivo de {title}: {e}")
-    else:
-        st.download_button(
-            f"Descargar {title}",
-            b"",
-            file_name=title.replace(" ", "_"),
-            use_container_width=True,
-            disabled=True,
-            key=dl_key,
-        )
 
 # --------------------------
 # Filtros globales
@@ -241,14 +211,12 @@ with tab_detalle:
     )
 
     st.divider()
-    st.caption("Documento de respaldo")
     rec_key = row.get("supporting_doc_key") or ""
     rec_url = signed_url_for_receipt(rec_key, 600)
-
-    _render_download(rec_url, rec_key or "", "documento de respaldo")
-
-
-    st.caption("Comprobante de pago")
     pay_key = row.get("payment_doc_key") or ""
     pay_url = signed_url_for_payment(pay_key, 600)
-    _render_download(pay_url, pay_key or "", "comprobante de pago")
+    cols_files = st.columns(2)
+    with cols_files[0]:
+        _render_download(rec_url, rec_key or "", "Documento de respaldo")
+    with cols_files[1]:
+        _render_download(pay_url, pay_key or "", "Comprobante de pago")

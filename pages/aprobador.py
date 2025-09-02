@@ -1,9 +1,6 @@
 # pages/aprobador.py
 # Rol Aprobador: métricas, listas por estado, detalles+actualizar, historial
 
-import os
-import uuid
-
 import pandas as pd
 import streamlit as st
 from f_auth import require_aprobador, current_user
@@ -20,9 +17,9 @@ from f_read import (
     list_expenses_by_supplier_id,
     list_expenses_by_category,
     list_expenses_by_requester,
+    _render_download,
 )
 from f_cud import update_expense_status, add_expense_comment
-import requests
 
 
 
@@ -35,32 +32,6 @@ if not me:
 user_id = me["id"]
 
 ESTADOS = ["solicitado", "aprobado", "rechazado", "pagado"]
-
-
-def _render_download(url: str, key: str, label: str):
-    dl_key = f"dl-{label}-{uuid.uuid4().hex}"
-    if url:
-        st.link_button(f"Abrir {label}", url, use_container_width=True)
-        try:
-            resp = requests.get(url, timeout=10)
-            resp.raise_for_status()
-            st.download_button(
-                f"Descargar {label}",
-                resp.content,
-                file_name=os.path.basename(key) if key else label.replace(" ", "_"),
-                use_container_width=True,
-                key=dl_key,
-            )
-        except Exception as e:
-            st.caption(f"No se pudo descargar {label}: {e}")
-    else:
-        st.download_button(
-            f"Descargar {label}",
-            b"",
-            use_container_width=True,
-            disabled=True,
-            key=dl_key,
-        )
 
 # ---------------------------------------------------
 # Tab 1 — Solicitudes
@@ -173,12 +144,11 @@ with tab2:
             f"**Solicitante:** {exp.get('requested_by_email','')}"
         )
         st.markdown(details_md)
-
-        st.caption("Documento de respaldo")
-        _render_download(rec_url, rec_key, "documento de respaldo")
-
-        st.caption("Comprobante de pago")
-        _render_download(pay_url, pay_key, "comprobante de pago")
+        cols_files = st.columns(2)
+        with cols_files[0]:
+            _render_download(rec_url, rec_key, "Documento de respaldo")
+        with cols_files[1]:
+            _render_download(pay_url, pay_key, "Comprobante de pago")
 
         st.divider()
         st.subheader("Historial (logs)")
@@ -331,10 +301,11 @@ with tab3:
         pay_key = exp.get("payment_doc_key") or ""
         rec_url = signed_url_for_receipt(rec_key, 600)
         pay_url = signed_url_for_payment(pay_key, 600)
-        st.caption("Documento de respaldo")
-        _render_download(rec_url, rec_key, "documento de respaldo")
-        st.caption("Comprobante de pago")
-        _render_download(pay_url, pay_key, "comprobante de pago")
+        cols_files = st.columns(2)
+        with cols_files[0]:
+            _render_download(rec_url, rec_key, "Documento de respaldo")
+        with cols_files[1]:
+            _render_download(pay_url, pay_key, "Comprobante de pago")
 
         st.divider()
         logs = list_expense_logs(eid)

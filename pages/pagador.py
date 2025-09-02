@@ -1,9 +1,6 @@
 # pages/pagador.py
 # Rol Pagador: métricas, listas por estado, detalles+marcar pagado, historial
 
-import os
-import uuid
-import requests
 import pandas as pd
 import streamlit as st
 
@@ -21,6 +18,7 @@ from f_read import (
     list_expenses_by_requester,
     signed_url_for_receipt,
     signed_url_for_payment,
+    _render_download,
 )
 
 from f_cud import mark_expense_as_paid, add_expense_comment
@@ -41,32 +39,6 @@ def _fmt_dt(s: str) -> str:
     except Exception:
         return s
 
-def _render_download(url: str, file_key: str, title: str):
-    """Renderiza link y botón de descarga; deshabilita si no hay archivo."""
-    dl_key = f"dl-{title}-{uuid.uuid4().hex}"
-    if url:
-        st.link_button(f"Abrir {title} en pestaña nueva", url, use_container_width=True)
-        try:
-            resp = requests.get(url, timeout=10)
-            resp.raise_for_status()
-            st.download_button(
-                f"Descargar {title}",
-                resp.content,
-                file_name=os.path.basename(file_key) if file_key else title.replace(" ", "_"),
-                use_container_width=True,
-                key=dl_key,
-            )
-        except Exception as e:
-            st.caption(f"No se pudo obtener el archivo de {title}: {e}")
-    else:
-        st.download_button(
-            f"Descargar {title}",
-            b"",
-            file_name=title.replace(" ", "_"),
-            use_container_width=True,
-            disabled=True,
-            key=dl_key,
-        )
 
 # ---------------------------------------------------
 # Tabs
@@ -166,18 +138,15 @@ with tab2:
             f"**Solicitante:** {exp.get('requested_by_email','')}"
         )
 
-        # Quote/recibo
-        st.caption("Documento de respaldo")
         rec_key = exp.get("supporting_doc_key") or ""
         rec_url = signed_url_for_receipt(rec_key, 600)
-        _render_download(rec_url, rec_key, "documento de respaldo")
-
-        # Comprobante de pago
-        st.caption("Comprobante de pago")
         pay_key = exp.get("payment_doc_key") or ""
         pay_url = signed_url_for_payment(pay_key, 600)
-        _render_download(pay_url, pay_key, "comprobante de pago")
-
+        cols_files = st.columns(2)
+        with cols_files[0]:
+            _render_download(rec_url, rec_key, "Documento de respaldo")
+        with cols_files[1]:
+            _render_download(pay_url, pay_key, "Comprobante de pago")
 
         st.divider()
         st.subheader("Historial (logs)")
@@ -348,17 +317,15 @@ with tab3:
             f"**Solicitante:** {exp.get('requested_by_email','')}  \n"
             f"**Creado:** {_fmt_dt(exp['created_at'])}"
         )
-        st.caption("Documento de respaldo")
         rec_key = exp.get("supporting_doc_key") or ""
         rec_url = signed_url_for_receipt(rec_key, 600)
-
-        _render_download(rec_url, rec_key, "documento de respaldo")
-
-        st.caption("Comprobante de pago")
         pay_key = exp.get("payment_doc_key") or ""
         pay_url = signed_url_for_payment(pay_key, 600)
-        _render_download(pay_url, pay_key, "comprobante de pago")
-
+        cols_files = st.columns(2)
+        with cols_files[0]:
+            _render_download(rec_url, rec_key, "Documento de respaldo")
+        with cols_files[1]:
+            _render_download(pay_url, pay_key, "Comprobante de pago")
 
         st.divider()
         logs = list_expense_logs(eid)

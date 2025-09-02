@@ -260,20 +260,6 @@ def list_expense_comments(expense_id: str) -> List[Dict[str, Any]]:
         })
     return out
 
-def signed_url_for_payment(key: str, expires: int = 300) -> Optional[str]:
-    """
-    Crea URL firmada corta para el comprobante de pago.
-    En este MVP usamos el bucket 'payments' para comprobantes.
-    """
-    if not key:
-        return None
-    try:
-        sb = get_client()
-        out = sb.storage.from_("payments").create_signed_url(key, expires)
-        return (out or {}).get("signed_url")
-    except Exception:
-        return None
-
 
 def _first_object_in_folder(bucket: str, folder: str) -> Optional[str]:
     """

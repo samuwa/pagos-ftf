@@ -37,6 +37,7 @@ def _fmt_dt(dt_str: str) -> str:
         return dt_str
 
 def _render_preview_if_pdf(url: str, file_key: str, title: str):
+    """Renderiza un link, botón de descarga y vista previa del PDF."""
     if not url:
         return
     st.link_button(f"Abrir {title} en pestaña nueva", url, use_container_width=True)

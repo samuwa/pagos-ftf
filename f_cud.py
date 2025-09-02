@@ -209,7 +209,7 @@ def update_expense_status(expense_id: str, actor_id: str, new_status: str, comme
 def mark_expense_as_paid(expense_id: str, actor_id: str, payment_doc_folder: str, comment: Optional[str] = None) -> None:
     """
     Actualiza el expense a 'pagado', setea payment_doc_key con la CARPETA y registra un log.
-    Requiere que el comprobante haya sido subido previamente a 'quotes/{folder}/archivo'.
+    Requiere que el comprobante haya sido subido previamente a 'payments/{folder}/archivo'.
     """
     if not (expense_id and actor_id and (payment_doc_folder or "").strip()):
         raise ValueError("Faltan datos para marcar como pagado.")

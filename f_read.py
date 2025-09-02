@@ -260,60 +260,6 @@ def list_expense_comments(expense_id: str) -> List[Dict[str, Any]]:
         })
     return out
 
-
-def _first_object_in_folder(bucket: str, folder: str) -> Optional[str]:
-    """
-    Devuelve la ruta (key) del primer archivo dentro de 'folder' en el bucket.
-    Si 'folder' en realidad es ya un archivo, lo intentamos usar tal cual.
-    """
-    sb = get_client()
-    folder = (folder or "").strip().strip("/")  # normaliza
-    if not folder:
-        return None
-
-    # 1) Intento: listar archivos dentro del folder
-    try:
-        listing = sb.storage.from_(bucket).list(path=folder, sortBy={"column": "updated_at", "order": "desc"})
-        if listing:
-            # Tomamos el más reciente
-            name = listing[0].get("name")
-            if name:
-                return f"{folder}/{name}"
-    except Exception:
-        pass
-
-    # 2) Fallback: quizá 'folder' ya es una ruta de archivo
-    return folder  # lo usamos tal cual
-
-def signed_url_for_receipt(key_or_folder: str, expires: int = 300) -> Optional[str]:
-    """
-    Si key_or_folder es una carpeta, toma el primer archivo adentro y crea URL firmada.
-    Bucket: 'quotes' (tu caso actual).
-    """
-    file_key = _first_object_in_folder("quotes", key_or_folder)
-    if not file_key:
-        return None
-    try:
-        sb = get_client()
-        out = sb.storage.from_("quotes").create_signed_url(file_key, expires)
-        return (out or {}).get("signed_url")
-    except Exception:
-        return None
-
-def signed_url_for_payment(key_or_folder: str, expires: int = 300) -> Optional[str]:
-    """
-    Igual que el recibo. Si guardas el comprobante como carpeta, funciona igual.
-    """
-    file_key = _first_object_in_folder("quotes", key_or_folder)
-    if not file_key:
-        return None
-    try:
-        sb = get_client()
-        out = sb.storage.from_("quotes").create_signed_url(file_key, expires)
-        return (out or {}).get("signed_url")
-    except Exception:
-        return None
-
 ## APROBADOR
 
 def _emails_by_ids(ids: Iterable[str]) -> dict:

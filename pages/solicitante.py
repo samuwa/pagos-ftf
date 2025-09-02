@@ -28,7 +28,7 @@ require_solicitante()
 # Categorías en código
 CATEGORIAS = ["Viajes", "Comidas", "Software/SaaS", "Oficina", "Servicios", "Otros"]
 
-st.title("Solicitudes")
+st.write("**Solicitudes**")
 
 me = current_user()
 if not me:

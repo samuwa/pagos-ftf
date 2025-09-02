@@ -172,19 +172,16 @@ def create_expense(
     return expense_id
 
 def add_expense_comment(expense_id: str, actor_id: str, text: str) -> None:
-    """
-    Inserta un comentario en expense_logs usando action='update' y details.kind='comment'.
-    """
+    """Guarda un comentario para la solicitud sin generar un nuevo log."""
     if not (expense_id and actor_id and (text or "").strip()):
         raise ValueError("Faltan datos para comentar.")
     sb = get_client()
     payload = {
         "expense_id": expense_id,
         "actor_id": actor_id,
-        "action": "update",  # permitido por el CHECK del esquema
-        "details": {"kind": "comment", "text": text.strip()},
+        "text": text.strip(),
     }
-    sb.schema("public").table("expense_logs").insert(payload).execute()
+    sb.schema("public").table("expense_comments").insert(payload).execute()
 
 
 ## APROBADOR

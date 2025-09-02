@@ -3,6 +3,8 @@
 
 import pandas as pd
 import streamlit as st
+import uuid
+from pathlib import Path
 
 from f_auth import require_pagador, current_user, get_client
 from f_read import (
@@ -200,28 +202,17 @@ with tab2:
                         st.error("Debes adjuntar un comprobante para marcar como pagado.")
                         st.stop()
 
-                    # Subir archivo al bucket 'payments' y guardar la key completa
+                    # Subir archivo al bucket 'payments' con un identificador único
                     sb = get_client()
                     bucket = "payments"
-                    folder = f"{expense_id}/pago-{uuid.uuid4().hex}"
-                    file_path = f"{folder}/{pay_file.name}"
-                    res = sb.storage.from_(bucket).upload(file_path, pay_file.getvalue())
-                    stored_key = (
-
-                        (getattr(res, "path", None) if res else None)
-                        or (getattr(res, "Key", None) if res else None)
-                        or (getattr(res, "key", None) if res else None)
-                        or (res.get("path") if isinstance(res, dict) else None)
-                        or (res.get("Key") if isinstance(res, dict) else None)
-
-                        or file_path
-                    )
+                    file_id = uuid.uuid4().hex + Path(pay_file.name).suffix
+                    sb.storage.from_(bucket).upload(file_id, pay_file.getvalue())
 
                     # Actualizar estado + payment_doc_key y log
                     mark_expense_as_paid(
                         expense_id=expense_id,
                         actor_id=user_id,
-                        payment_doc_key=stored_key,
+                        payment_doc_key=file_id,
                         comment=(comment or "").strip() or None,
                     )
                     st.success("Solicitud marcada como pagada.")

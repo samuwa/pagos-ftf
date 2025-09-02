@@ -217,6 +217,27 @@ def get_my_expense(user_id: str, expense_id: str) -> Optional[Dict[str, Any]]:
     )
     return res.data
 
+def _details_to_text(details: Optional[Dict[str, Any]]) -> str:
+    """Convierte el JSON de details en texto legible."""
+    if not details:
+        return ""
+
+    kind = details.get("kind")
+    if kind == "comment":
+        return details.get("text", "")
+    if kind == "status_change":
+        parts = []
+        ns = details.get("new_status")
+        if ns:
+            parts.append(f"Cambio de estado a '{ns}'")
+        comment = details.get("comment")
+        if comment:
+            parts.append(comment)
+        return " — ".join(parts)
+
+    # Fallback: combinar pares clave:valor, ignorando 'kind'.
+    return ", ".join(f"{k}: {v}" for k, v in details.items() if k != "kind")
+
 def list_expense_logs(expense_id: str) -> List[Dict[str, Any]]:
     """
     Lista todos los logs de una solicitud y agrega actor_email.
@@ -234,6 +255,7 @@ def list_expense_logs(expense_id: str) -> List[Dict[str, Any]]:
     emails = _emails_by_ids({r["actor_id"] for r in rows})
     for r in rows:
         r["actor_email"] = emails.get(r["actor_id"])
+        r["details_text"] = _details_to_text(r.get("details"))
     return rows
 
 def list_expense_comments(expense_id: str) -> List[Dict[str, Any]]:

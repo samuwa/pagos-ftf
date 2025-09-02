@@ -247,8 +247,8 @@ with tab_detalle:
         st.caption("No hay historial.")
     else:
         for lg in logs:
-            det = lg.get("details") or {}
+            det_txt = lg.get("details_text", "")
             st.markdown(
                 f"- **{lg['created_at']}** — {lg['action']} — {lg.get('actor_email','(sin email)')}  "
-                + (f"— {det}" if det else "")
+                + (f"— {det_txt}" if det_txt else "")
             )

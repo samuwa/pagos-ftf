@@ -180,7 +180,7 @@ with tab2:
         logs = list_expense_logs(expense_id)
         if logs:
             log_df = pd.DataFrame(
-                [{"Fecha": _fmt_dt(l["created_at"]), "Acción": l["action"], "Actor": l.get("actor_email",""), "Detalles": l.get("details",{})} for l in logs]
+                [{"Fecha": _fmt_dt(l["created_at"]), "Acción": l["action"], "Actor": l.get("actor_email",""), "Detalles": l.get("details_text", "")} for l in logs]
             )
             st.dataframe(log_df, use_container_width=True, hide_index=True)
         else:
@@ -349,7 +349,7 @@ with tab3:
         logs = list_expense_logs(eid)
         if logs:
             log_df = pd.DataFrame(
-                [{"Fecha": _fmt_dt(l["created_at"]), "Acción": l["action"], "Actor": l.get("actor_email",""), "Detalles": l.get("details",{})} for l in logs]
+                [{"Fecha": _fmt_dt(l["created_at"]), "Acción": l["action"], "Actor": l.get("actor_email",""), "Detalles": l.get("details_text", "")} for l in logs]
             )
             st.subheader("Historial (logs)")
             st.dataframe(log_df, use_container_width=True, hide_index=True)

@@ -237,18 +237,13 @@ def list_expense_logs(expense_id: str) -> List[Dict[str, Any]]:
     return rows
 
 def list_expense_comments(expense_id: str) -> List[Dict[str, Any]]:
-    """
-    Comentarios = logs con action='update' y details.kind='comment'.
-    Devuelve [{created_at, text, actor_email}, ...]
-    """
+    """Devuelve comentarios [{created_at, text, actor_email}, ...]"""
     sb = get_client()
     res = (
         sb.schema("public")
-        .table("expense_logs")
-        .select("actor_id,action,details,created_at")
+        .table("expense_comments")
+        .select("actor_id,text,created_at")
         .eq("expense_id", expense_id)
-        .eq("action", "update")
-        .eq("details->>kind", "comment")   # filtra JSONB por clave 'kind'
         .order("created_at", desc=True)
         .execute()
     )
@@ -256,10 +251,9 @@ def list_expense_comments(expense_id: str) -> List[Dict[str, Any]]:
     emails = _emails_by_ids({r["actor_id"] for r in rows})
     out = []
     for r in rows:
-        det = r.get("details") or {}
         out.append({
             "created_at": r["created_at"],
-            "text": det.get("text", ""),
+            "text": r.get("text", ""),
             "actor_email": emails.get(r["actor_id"]),
         })
     return out

@@ -440,45 +440,37 @@ def list_expenses_by_requester(user_id: str) -> List[Dict[str, Any]]:
     for r in rows:
         r["requested_by_email"] = email
     return rows
-
-
-def receipt_file_key(key_or_folder: str) -> Optional[str]:
-    """
-    Devuelve la ruta del primer archivo dentro del 'folder' guardado en expenses.supporting_doc_key
-    (bucket 'quotes'). Si ya es un archivo, la devuelve tal cual.
-    """
-    from .f_read import _first_object_in_folder  # si ya la tienes en este módulo, omite este import relativo
-    try:
-        return _first_object_in_folder("quotes", (key_or_folder or "").strip())
-    except Exception:
-        return None
-
 @st.cache_data(ttl=30, show_spinner=False)
 def _first_object_in_folder(bucket: str, key_or_folder: str) -> Optional[str]:
     """
-    Devuelve la key del primer archivo dentro de 'key_or_folder' (carpeta).
-    Si 'key_or_folder' ya es un archivo, la retorna tal cual.
+    Devuelve la key del primer archivo dentro de ``key_or_folder``.
+    Si ``key_or_folder`` ya es un archivo, la retorna tal cual.
+    Si existen subcarpetas, desciende hasta hallar un archivo.
     """
     sb = get_client()
-    key = (key_or_folder or "").strip().strip("/")
-    if not key:
+    path = (key_or_folder or "").strip().strip("/")
+    if not path:
         return None
 
-    # 1) Intentar listar "dentro" de la carpeta
-    try:
-        items = sb.storage.from_(bucket).list(
-            path=key, sortBy={"column": "updated_at", "order": "desc"}
-        )
-        # La API devuelve archivos/carpetas con campo 'name'
-        for it in (items or []):
-            name = it.get("name")
-            if name:
-                return f"{key}/{name}"
-    except Exception:
-        pass
+    # Descender recursivamente hasta encontrar un archivo (máx. 10 niveles)
+    for _ in range(10):
+        try:
+            items = sb.storage.from_(bucket).list(
+                path=path, sortBy={"column": "updated_at", "order": "desc"}
+            )
+        except Exception:
+            return path if "/" in path else None
 
-    # 2) Fallback: podría ser ya una key de archivo
-    return key if "/" in key else None
+        if not items:
+            return path if "/" in path else None
+
+        name = (items[0] or {}).get("name")
+        if not name:
+            return path if "/" in path else None
+
+        path = f"{path}/{name}"
+
+    return path if "/" in path else None
 
 
 def receipt_file_key(key_or_folder: str) -> Optional[str]:

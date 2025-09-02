@@ -3,13 +3,12 @@
 
 import pandas as pd
 import streamlit as st
-from f_auth import require_aprobador, current_user
+from f_auth import require_aprobador, current_user, get_client
 from f_read import (
     list_expenses_for_status,          # -> for metrics/table in Tab 1
     get_expense_by_id_for_approver,    # -> full row for details
     list_expense_logs,
     list_expense_comments,
-    signed_url_for_receipt,
     signed_url_for_payment,
     list_suppliers,
     list_categories_from_expenses,
@@ -144,9 +143,11 @@ with tab2:
         st.markdown(details_md)
         cols_files = st.columns(2)
         with cols_files[0]:
+
             _render_download(rec_key, "Documento de respaldo", signed_url_for_receipt)
         with cols_files[1]:
             _render_download(pay_key, "Comprobante de pago", signed_url_for_payment)
+
 
         st.divider()
         st.subheader("Historial (logs)")
@@ -299,6 +300,7 @@ with tab3:
         pay_key = exp.get("payment_doc_key") or ""
         cols_files = st.columns(2)
         with cols_files[0]:
+
             _render_download(rec_key, "Documento de respaldo", signed_url_for_receipt)
         with cols_files[1]:
             _render_download(pay_key, "Comprobante de pago", signed_url_for_payment)

@@ -299,7 +299,7 @@ def list_expenses_for_status(status: Optional[str]) -> List[Dict[str, Any]]:
     q = (
         sb.schema("public")
         .table("v_expenses_basic")
-        .select("id,supplier_name,amount,category,description,status,created_at,supporting_doc_key,requested_by")
+        .select("id,supplier_name,amount,category,description,status,created_at,supporting_doc_key,payment_doc_key,requested_by")
         .order("created_at", desc=True)
     )
     if status:
@@ -316,7 +316,7 @@ def get_expense_by_id_for_approver(expense_id: str) -> Optional[Dict[str, Any]]:
     res = (
         sb.schema("public")
         .table("v_expenses_basic")
-        .select("id,supplier_name,amount,category,description,status,created_at,supporting_doc_key,requested_by")
+        .select("id,supplier_name,amount,category,description,status,created_at,supporting_doc_key,payment_doc_key,requested_by")
         .eq("id", expense_id)
         .single()
         .execute()

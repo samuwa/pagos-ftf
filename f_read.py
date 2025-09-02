@@ -217,27 +217,6 @@ def get_my_expense(user_id: str, expense_id: str) -> Optional[Dict[str, Any]]:
     )
     return res.data
 
-def _details_to_text(details: Optional[Dict[str, Any]]) -> str:
-    """Convierte el JSON de details en texto legible."""
-    if not details:
-        return ""
-
-    kind = details.get("kind")
-    if kind == "comment":
-        return details.get("text", "")
-    if kind == "status_change":
-        parts = []
-        ns = details.get("new_status")
-        if ns:
-            parts.append(f"Cambio de estado a '{ns}'")
-        comment = details.get("comment")
-        if comment:
-            parts.append(comment)
-        return " — ".join(parts)
-
-    # Fallback: combinar pares clave:valor, ignorando 'kind'.
-    return ", ".join(f"{k}: {v}" for k, v in details.items() if k != "kind")
-
 def list_expense_logs(expense_id: str) -> List[Dict[str, Any]]:
     """
     Lista todos los logs de una solicitud y agrega actor_email.
@@ -246,7 +225,7 @@ def list_expense_logs(expense_id: str) -> List[Dict[str, Any]]:
     res = (
         sb.schema("public")
         .table("expense_logs")
-        .select("actor_id,action,details,created_at")
+        .select("actor_id,action,message,created_at")
         .eq("expense_id", expense_id)
         .order("created_at", desc=True)
         .execute()
@@ -255,7 +234,7 @@ def list_expense_logs(expense_id: str) -> List[Dict[str, Any]]:
     emails = _emails_by_ids({r["actor_id"] for r in rows})
     for r in rows:
         r["actor_email"] = emails.get(r["actor_id"])
-        r["details_text"] = _details_to_text(r.get("details"))
+        r["details_text"] = r.get("message", "")
     return rows
 
 def list_expense_comments(expense_id: str) -> List[Dict[str, Any]]:
@@ -264,19 +243,19 @@ def list_expense_comments(expense_id: str) -> List[Dict[str, Any]]:
     res = (
         sb.schema("public")
         .table("expense_comments")
-        .select("actor_id,text,created_at")
+        .select("author_id,text,created_at")
         .eq("expense_id", expense_id)
         .order("created_at", desc=True)
         .execute()
     )
     rows = res.data or []
-    emails = _emails_by_ids({r["actor_id"] for r in rows})
+    emails = _emails_by_ids({r["author_id"] for r in rows})
     out = []
     for r in rows:
         out.append({
             "created_at": r["created_at"],
             "text": r.get("text", ""),
-            "actor_email": emails.get(r["actor_id"]),
+            "actor_email": emails.get(r["author_id"]),
         })
     return out
 
@@ -636,20 +615,17 @@ def list_approvers_for_viewer() -> List[Dict[str, Any]]:
 
 @st.cache_data(ttl=30, show_spinner=False)
 def _paid_at_map_for_expenses(expense_ids: List[str]) -> Dict[str, str]:
-    """
-    Devuelve expense_id -> paid_at (ISO str) usando expense_logs con details.new_status='pagado'.
-    Si hay múltiples cambios a 'pagado', tomamos el más reciente.
-    """
+    """Devuelve expense_id -> paid_at usando ``expense_logs`` con mensaje de estado pagado."""
     if not expense_ids:
         return {}
     sb = get_client()
     res = (
         sb.schema("public")
         .table("expense_logs")
-        .select("expense_id,created_at,details,action")
+        .select("expense_id,created_at,action,message")
         .in_("expense_id", expense_ids)
         .eq("action", "update")
-        .eq("details->>new_status", "pagado")
+        .ilike("message", "%status -> pagado%")
         .order("created_at", desc=True)
         .execute()
     )

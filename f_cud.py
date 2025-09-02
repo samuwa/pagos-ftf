@@ -1,7 +1,7 @@
 # f_cud.py
 # Create/Update/Delete actions for Admin (allowlist, roles, suppliers)
 import streamlit as st
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from f_auth import get_client
 from f_read import get_user_id_by_email
 
@@ -103,19 +103,16 @@ def remove_role(user_id: str, role: str) -> None:
         .execute()
     )
 
-def create_expense_log(expense_id: str, actor_id: str, action: str, details: Optional[Dict[str, Any]] = None) -> None:
-    """
-    Inserta un log en expense_logs. 'action' debe respetar el CHECK del schema.
-    details es JSON libre (comentarios, diffs, etc.).
-    """
-    if not (expense_id and actor_id and action):
+def create_expense_log(expense_id: str, actor_id: str, action: str, message: str) -> None:
+    """Inserta un registro en ``expense_logs`` usando el nuevo campo ``message``."""
+    if not (expense_id and actor_id and action and (message or "").strip()):
         raise ValueError("Faltan datos para crear el log.")
     sb = get_client()
     payload = {
         "expense_id": expense_id,
         "actor_id": actor_id,
         "action": action,
-        "details": (details or {}),
+        "message": message.strip(),
     }
     sb.schema("public").table("expense_logs").insert(payload).execute()
 
@@ -153,18 +150,17 @@ def create_expense(
 
     if expense_id:
         try:
+            msg = (
+                f"create: supplier={supplier_id}, amount={round(float(amount), 2)}, "
+                f"category={category}"
+            )
+            if description:
+                msg += f", description={description}"
             create_expense_log(
                 expense_id=expense_id,
                 actor_id=requested_by,
                 action="create",
-                details={
-                    "kind": "create",
-                    "supplier_id": supplier_id,
-                    "amount": round(float(amount), 2),
-                    "category": category,
-                    "supporting_doc_folder": supporting_doc_key,
-                    "description": description,
-                },
+                message=msg,
             )
         except Exception:
             pass
@@ -178,32 +174,13 @@ def add_expense_comment(expense_id: str, actor_id: str, text: str) -> None:
     sb = get_client()
     payload = {
         "expense_id": expense_id,
-        "actor_id": actor_id,
+        "author_id": actor_id,
         "text": text.strip(),
     }
     sb.schema("public").table("expense_comments").insert(payload).execute()
 
 
 ## APROBADOR
-
-
-def update_expense_status(expense_id: str, actor_id: str, new_status: str, comment: Optional[str] = None) -> None:
-    """
-    Cambia el estado de una solicitud (aprobado/rechazado).
-    Inserta un log con acción 'update'.
-    """
-    if new_status not in ("aprobado", "rechazado"):
-        raise ValueError("Estado inválido para aprobador.")
-
-    sb = get_client()
-    # Update en expenses
-    sb.schema("public").table("expenses").update({"status": new_status}).eq("id", expense_id).execute()
-
-    # Log
-    details = {"kind": "status_change", "new_status": new_status}
-    if comment:
-        details["comment"] = comment
-    create_expense_log(expense_id, actor_id, action="update", details=details)
 
 
 VALID_FOR_APPROVER = {"solicitado", "aprobado", "rechazado"}  # 'pagado' is for Pagador
@@ -224,10 +201,10 @@ def update_expense_status(expense_id: str, actor_id: str, new_status: str, comme
 
     sb.schema("public").table("expenses").update(update).eq("id", expense_id).execute()
 
-    details = {"kind": "status_change", "new_status": ns}
+    msg = f"status -> {ns}"
     if comment:
-        details["comment"] = comment
-    create_expense_log(expense_id, actor_id, action="update", details=details)
+        msg += f"; {comment}"
+    create_expense_log(expense_id, actor_id, action="update", message=msg)
 
 def mark_expense_as_paid(expense_id: str, actor_id: str, payment_doc_folder: str, comment: Optional[str] = None) -> None:
     """
@@ -241,8 +218,8 @@ def mark_expense_as_paid(expense_id: str, actor_id: str, payment_doc_folder: str
         {"status": "pagado", "payment_doc_key": payment_doc_folder.strip(), "paid_by": actor_id}
     ).eq("id", expense_id).execute()
 
-    details = {"kind": "status_change", "new_status": "pagado", "payment_doc_folder": payment_doc_folder}
+    msg = f"status -> pagado; folder={payment_doc_folder}"
     if comment:
-        details["comment"] = comment
-    create_expense_log(expense_id, actor_id, action="update", details=details)
+        msg += f"; {comment}"
+    create_expense_log(expense_id, actor_id, action="update", message=msg)
 

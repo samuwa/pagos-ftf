@@ -1,11 +1,9 @@
 # pages/solicitante.py
 # Solicitudes: crear gasto, ver "Mis solicitudes", y "Detalles y actualizar"
 
-import os
 import uuid
 from pathlib import Path
 from decimal import Decimal
-import requests
 import streamlit as st
 import pandas as pd
 
@@ -202,59 +200,25 @@ with tab_detalle:
 )
 
     # Enlaces rápidos a archivos
-    rec_key = exp.get("supporting_doc_key") or ""
-    pay_key = exp.get("payment_doc_key") or ""
+    rec_key = exp.get("supporting_doc_key")
+    pay_key = exp.get("payment_doc_key")
     rec_url = signed_url_for_receipt(rec_key, 600)
     pay_url = signed_url_for_payment(pay_key, 600)
     colf1, colf2 = st.columns(2)
     with colf1:
-        if rec_url:
-            st.link_button("Ver recibo", rec_url, use_container_width=True)
-            try:
-                resp = requests.get(rec_url, timeout=10)
-                resp.raise_for_status()
-                st.download_button(
-                    "Descargar recibo",
-                    resp.content,
-                    file_name=os.path.basename(rec_key) if rec_key else "recibo",
-                    use_container_width=True,
-                    key=f"dl-recibo-{uuid.uuid4().hex}",
-                )
-            except Exception as e:
-                st.caption(f"No se pudo descargar el recibo: {e}")
-        else:
-            st.download_button(
-                "Descargar recibo",
-                b"",
-                file_name="recibo",
-                use_container_width=True,
-                disabled=True,
-                key=f"dl-recibo-{uuid.uuid4().hex}",
-            )
+        st.link_button(
+            "Ver recibo",
+            rec_url or "#",
+            use_container_width=True,
+            disabled=not bool(rec_url),
+        )
     with colf2:
-        if pay_url:
-            st.link_button("Ver comprobante de pago", pay_url, use_container_width=True)
-            try:
-                resp = requests.get(pay_url, timeout=10)
-                resp.raise_for_status()
-                st.download_button(
-                    "Descargar comprobante",
-                    resp.content,
-                    file_name=os.path.basename(pay_key) if pay_key else "comprobante",
-                    use_container_width=True,
-                    key=f"dl-comprobante-{uuid.uuid4().hex}",
-                )
-            except Exception as e:
-                st.caption(f"No se pudo descargar el comprobante: {e}")
-        else:
-            st.download_button(
-                "Descargar comprobante",
-                b"",
-                file_name="comprobante",
-                use_container_width=True,
-                disabled=True,
-                key=f"dl-comprobante-{uuid.uuid4().hex}",
-            )
+        st.link_button(
+            "Ver comprobante de pago",
+            pay_url or "#",
+            use_container_width=True,
+            disabled=not bool(pay_url),
+        )
 
     st.divider()
 

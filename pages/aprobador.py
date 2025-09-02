@@ -9,6 +9,7 @@ from f_read import (
     get_expense_by_id_for_approver,    # -> full row for details
     list_expense_logs,
     list_expense_comments,
+    signed_url_for_receipt,
     signed_url_for_payment,
     list_suppliers,
     list_categories_from_expenses,

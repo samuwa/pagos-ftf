@@ -447,6 +447,34 @@ def signed_url_for_payment(key: str, expires: int = 600) -> Optional[str]:
         return None
 
 
+def payment_doc_url_for_expense(expense_id: str, expires: int = 600) -> Tuple[Optional[str], Optional[str]]:
+    """Obtiene ``payment_doc_key`` para un gasto y genera una URL firmada.
+
+    Retorna una tupla ``(url, key)``. Si no existe archivo asociado, ambos
+    elementos serán ``None``.
+    """
+    sb = get_client()
+    try:
+        res = (
+            sb.schema("public")
+            .table("expenses")
+            .select("payment_doc_key")
+            .eq("id", expense_id)
+            .single()
+            .execute()
+        )
+    except Exception:
+        return None, None
+    key = (res.data or {}).get("payment_doc_key")
+    if not key:
+        return None, None
+    try:
+        out = sb.storage.from_("payments").create_signed_url(key.strip(), expires)
+        return (out or {}).get("signed_url"), key.strip()
+    except Exception:
+        return None, key.strip()
+
+
 
 def _emails_by_ids(ids: Iterable[str]) -> dict:
     ids = [i for i in ids if i]

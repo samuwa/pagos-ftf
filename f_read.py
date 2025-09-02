@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Optional, Tuple, Set, Iterable, Callable
 from f_auth import get_client
 from collections import defaultdict
 import datetime as dt
+
 import pandas as pd
 
 # --------------------------
@@ -17,10 +18,12 @@ def _render_download(
     El botón permanecerá deshabilitado si la URL firmada está vacía.
     """
 
+
     url = url_fn(key, 600) if key else None
     st.link_button(
         label,
         url or "#",
+
         use_container_width=True,
         disabled=not bool(url),
     )

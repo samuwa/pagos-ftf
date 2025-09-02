@@ -3,46 +3,30 @@ from typing import List, Dict, Any, Optional, Tuple, Set, Iterable, Callable
 from f_auth import get_client
 from collections import defaultdict
 import datetime as dt
-import os
 import uuid
-import requests
 import pandas as pd
 
 # --------------------------
 # Utilidades de UI
 # --------------------------
-def _render_download(key: str, label: str, url_fn: Callable[[str, int], Optional[str]]) -> None:
-    """Renderiza un botón de descarga para un archivo en Supabase Storage.
+def _render_download(
+    key: str, label: str, url_fn: Callable[[str, int], Optional[str]]
+) -> None:
+    """Renderiza un botón que abre el archivo en una nueva pestaña.
 
     ``url_fn`` debe ser una función que retorne una URL firmada para ``key``.
-    El botón de descarga solo estará habilitado si la URL firmada no está vacía.
-    En caso contrario se mostrará un mensaje de advertencia y el botón permanecerá deshabilitado.
+    El botón permanecerá deshabilitado si la URL firmada está vacía.
     """
 
     dl_key = f"dl-{label}-{uuid.uuid4().hex}"
-    url = url_fn(key, 600)
-    if url:
-        try:
-            resp = requests.get(url, timeout=10)
-            resp.raise_for_status()
-            st.download_button(
-                label,
-                resp.content,
-                file_name=os.path.basename(key) if key else label.replace(" ", "_"),
-                key=dl_key,
-                width="content",
-            )
-        except Exception as e:  # pragma: no cover - UI feedback
-            st.caption(f"No se pudo descargar {label}: {e}")
-    else:
-        st.download_button(
-            label,
-            b"",
-            file_name=os.path.basename(key) if key else label.replace(" ", "_"),
-            key=dl_key,
-            disabled=True,
-            width="content",
-        )
+    url = url_fn(key, 600) if key else None
+    st.link_button(
+        label,
+        url or "#",
+        key=dl_key,
+        use_container_width=True,
+        disabled=not bool(url),
+    )
 
 # ==========================
 # ==== AUTH AND ADMIN ======

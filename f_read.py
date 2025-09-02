@@ -411,48 +411,45 @@ def list_expenses_by_requester(user_id: str) -> List[Dict[str, Any]]:
         r["requested_by_email"] = email
     return rows
 def receipt_file_key(key: str) -> Optional[str]:
-    """
-    Normaliza y retorna la key almacenada para el documento de respaldo.
-    Ya no se buscan archivos dentro de carpetas.
-    """
-    key = (key or "").strip().strip("/")
+    """Retorna la key almacenada para el documento de respaldo."""
+    key = key or ""
     return key or None
 
 
 def payment_file_key(key: str) -> Optional[str]:
-    """Normaliza y retorna la key almacenada para el comprobante de pago."""
-    key = (key or "").strip().strip("/")
+    """Retorna la key almacenada para el comprobante de pago."""
+    key = key or ""
     return key or None
 
 
 def signed_url_for_receipt(key: str, expires: int = 600) -> Optional[str]:
-    """Crea una URL firmada usando la key guardada en ``supporting_doc_key``."""
+    """Genera una URL pública para ``supporting_doc_key``."""
     file_key = receipt_file_key(key)
     if not file_key:
         return None
     try:
         sb = get_client()
-        out = sb.storage.from_("quotes").create_signed_url(file_key, expires)
-        return (out or {}).get("signed_url")
+        return sb.storage.from_("quotes").get_public_url(file_key)
     except Exception:
         return None
 
 
 def signed_url_for_payment(key: str, expires: int = 600) -> Optional[str]:
-    """Crea una URL firmada usando la key guardada en ``payment_doc_key``."""
+    """Genera una URL pública para ``payment_doc_key``."""
     file_key = payment_file_key(key)
     if not file_key:
         return None
     try:
         sb = get_client()
-        out = sb.storage.from_("payments").create_signed_url(file_key, expires)
-        return (out or {}).get("signed_url")
+        return sb.storage.from_("payments").get_public_url(file_key)
     except Exception:
         return None
 
 
-def payment_doc_url_for_expense(expense_id: str, expires: int = 600) -> Tuple[Optional[str], Optional[str]]:
-    """Obtiene ``payment_doc_key`` para un gasto y genera una URL firmada.
+def payment_doc_url_for_expense(
+    expense_id: str, expires: int = 600
+) -> Tuple[Optional[str], Optional[str]]:
+    """Obtiene ``payment_doc_key`` para un gasto y genera una URL pública.
 
     Retorna una tupla ``(url, key)``. Si no existe archivo asociado, ambos
     elementos serán ``None``.
@@ -473,8 +470,8 @@ def payment_doc_url_for_expense(expense_id: str, expires: int = 600) -> Tuple[Op
     if not key:
         return None, None
     try:
-        out = sb.storage.from_("payments").create_signed_url(key.strip(), expires)
-        return (out or {}).get("signed_url"), key.strip()
+        url = sb.storage.from_("payments").get_public_url(key.strip())
+        return url, key.strip()
     except Exception:
         return None, key.strip()
 

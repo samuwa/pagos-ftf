@@ -3,6 +3,7 @@
 
 import os
 import uuid
+from pathlib import Path
 from decimal import Decimal
 import requests
 import streamlit as st
@@ -90,28 +91,16 @@ with tab_nueva:
                 # Subir archivo a Storage (bucket 'quotes')
                 sb = get_client()
                 bucket = "quotes"  # tu bucket
-                folder = f"{user_id}/{uuid.uuid4().hex}"             # carpeta
-                file_name = file.name                                 # preserva nombre original
-                file_path = f"{folder}/{file_name}"                   # archivo dentro de la carpeta
+                file_id = uuid.uuid4().hex + Path(file.name).suffix
 
-                res = sb.storage.from_(bucket).upload(file_path, file.getvalue())
-                stored_key = (
-
-                    (getattr(res, "path", None) if res else None)
-                    or (getattr(res, "Key", None) if res else None)
-                    or (getattr(res, "key", None) if res else None)
-                    or (res.get("path") if isinstance(res, dict) else None)
-                    or (res.get("Key") if isinstance(res, dict) else None)
-
-                    or file_path
-                )
+                sb.storage.from_(bucket).upload(file_id, file.getvalue())
 
                 expense_id = create_expense(
                     requested_by=user_id,
                     supplier_id=supplier_id,
                     amount=float(Decimal(str(amount))),
                     category=categoria,
-                    supporting_doc_key=stored_key,  # guardamos la key completa
+                    supporting_doc_key=file_id,
                     description=descripcion.strip() if descripcion else None,
                 )
 

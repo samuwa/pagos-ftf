@@ -133,7 +133,8 @@ with tab2:
 
     # ---- Left: details, logs, comments
     with left:
-        st.markdown(
+        rec_url = signed_url_for_receipt(exp.get("supporting_doc_key") or "", 600)
+        details_md = (
             f"**Proveedor:** {exp['supplier_name']}  \n"
             f"**Descripción:** {exp.get('description','')}  \n"
             f"**Monto:** {exp['amount']:.2f}  \n"
@@ -142,11 +143,11 @@ with tab2:
             f"**Creado:** {_fmt_dt(exp['created_at'])}  \n"
             f"**Solicitante:** {exp.get('requested_by_email','')}"
         )
-
-        rec_url = signed_url_for_receipt(exp.get("supporting_doc_key") or "", 600)
-        render_quote_preview_if_pdf(exp.get("supporting_doc_key") or "")
         if rec_url:
-            st.link_button("Ver documento de respaldo", rec_url, use_container_width=True)
+            details_md += f"  \n**Documento de respaldo:** [Descargar]({rec_url})"
+        st.markdown(details_md)
+
+        render_quote_preview_if_pdf(exp.get("supporting_doc_key") or "")
 
         st.divider()
         st.subheader("Historial (logs)")

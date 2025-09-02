@@ -4,6 +4,7 @@
 import os
 import uuid
 from decimal import Decimal
+import requests
 import streamlit as st
 import pandas as pd
 
@@ -14,6 +15,8 @@ from f_read import (
     recent_similar_expenses,
     signed_url_for_receipt,
     signed_url_for_payment,
+    receipt_file_key,
+    payment_file_key,
     get_my_expense,
     list_expense_comments,
     list_expense_logs,
@@ -202,15 +205,39 @@ with tab_detalle:
 )
 
     # Enlaces rápidos a archivos
+    rec_key = receipt_file_key(exp.get("supporting_doc_key") or "")
+    pay_key = payment_file_key(exp.get("payment_doc_key") or "")
     rec_url = signed_url_for_receipt(exp.get("supporting_doc_key") or "", 600)
     pay_url = signed_url_for_payment(exp.get("payment_doc_key") or "", 600)
     colf1, colf2 = st.columns(2)
     with colf1:
         if rec_url:
             st.link_button("Ver recibo", rec_url, use_container_width=True)
+            try:
+                resp = requests.get(rec_url, timeout=10)
+                resp.raise_for_status()
+                st.download_button(
+                    "Descargar recibo",
+                    resp.content,
+                    file_name=os.path.basename(rec_key) if rec_key else "recibo",
+                    use_container_width=True,
+                )
+            except Exception as e:
+                st.caption(f"No se pudo descargar el recibo: {e}")
     with colf2:
         if pay_url:
             st.link_button("Ver comprobante de pago", pay_url, use_container_width=True)
+            try:
+                resp = requests.get(pay_url, timeout=10)
+                resp.raise_for_status()
+                st.download_button(
+                    "Descargar comprobante",
+                    resp.content,
+                    file_name=os.path.basename(pay_key) if pay_key else "comprobante",
+                    use_container_width=True,
+                )
+            except Exception as e:
+                st.caption(f"No se pudo descargar el comprobante: {e}")
 
     st.divider()
 

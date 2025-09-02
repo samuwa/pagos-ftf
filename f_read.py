@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 from typing import List, Dict, Any, Optional, Tuple, Set, Iterable
 from f_auth import get_client
@@ -262,14 +263,13 @@ def list_expense_comments(expense_id: str) -> List[Dict[str, Any]]:
 def signed_url_for_payment(key: str, expires: int = 300) -> Optional[str]:
     """
     Crea URL firmada corta para el comprobante de pago.
-    En este MVP usamos el mismo bucket 'quotes'; si luego usas otro (p.ej. 'payments'),
-    cambia aquí el nombre del bucket.
+    En este MVP usamos el bucket 'payments' para comprobantes.
     """
     if not key:
         return None
     try:
         sb = get_client()
-        out = sb.storage.from_("quotes").create_signed_url(key, expires)  # mismo bucket
+        out = sb.storage.from_("payments").create_signed_url(key, expires)
         return (out or {}).get("signed_url")
     except Exception:
         return None
@@ -519,12 +519,12 @@ def signed_url_for_payment(key_or_folder: str, expires: int = 600) -> Optional[s
     """
     Igual que arriba, pero para el comprobante de pago si lo guardas también como carpeta.
     """
-    file_key = _first_object_in_folder("quotes", key_or_folder)
+    file_key = _first_object_in_folder("payments", key_or_folder)
     if not file_key:
         return None
     try:
         sb = get_client()
-        out = sb.storage.from_("quotes").create_signed_url(file_key, expires)
+        out = sb.storage.from_("payments").create_signed_url(file_key, expires)
         return (out or {}).get("signed_url")
     except Exception:
         return None
@@ -543,37 +543,44 @@ def render_quote_preview_if_pdf(supporting_doc_key: str):
     # Link siempre
     st.link_button("Abrir documento en pestaña nueva", url, use_container_width=True)
 
-    # ¿Es PDF?
-    if not file_key or not file_key.lower().endswith(".pdf"):
-        return
-
-    # Cargar bytes del PDF y mostrar solo la primera página
+    file_bytes = None
     try:
         resp = requests.get(url, timeout=10)
         resp.raise_for_status()
-        pdf_bytes = resp.content
-        # Importante: en tabs hay que fijar width; pages_to_render permite 1ª página.
-        pdf_viewer(
-            pdf_bytes,
-            width=700,            # ver nota en PyPI: definir width dentro de tabs
-            height=900,
-            pages_to_render=[1],  # solo la primera página
-        )
+        file_bytes = resp.content
     except Exception as e:
-        # Si algo falla, nos quedamos con el botón de abrir en nueva pestaña
-        st.caption(f"No se pudo previsualizar el PDF: {e}")
+        st.caption(f"No se pudo obtener el documento: {e}")
+
+    if file_bytes:
+        fname = os.path.basename(file_key) if file_key else "documento"
+        st.download_button(
+            "Descargar documento",
+            file_bytes,
+            file_name=fname,
+            use_container_width=True,
+        )
+        if file_key and file_key.lower().endswith(".pdf"):
+            try:
+                pdf_viewer(
+                    file_bytes,
+                    width=700,            # ver nota en PyPI: definir width dentro de tabs
+                    height=900,
+                    pages_to_render=[1],  # solo la primera página
+                )
+            except Exception as e:
+                st.caption(f"No se pudo previsualizar el PDF: {e}")
 
 @st.cache_data(ttl=30, show_spinner=False)
 def payment_file_key(key_or_folder: str) -> Optional[str]:
     """
-    Primer archivo dentro del folder de 'payment_doc_key' en el bucket 'quotes'.
+    Primer archivo dentro del folder de 'payment_doc_key' en el bucket 'payments'.
     """
     sb = get_client()
     key = (key_or_folder or "").strip().strip("/")
     if not key:
         return None
     try:
-        items = sb.storage.from_("quotes").list(path=key, sortBy={"column": "updated_at", "order": "desc"})
+        items = sb.storage.from_("payments").list(path=key, sortBy={"column": "updated_at", "order": "desc"})
         for it in (items or []):
             name = it.get("name")
             if name:
@@ -588,7 +595,7 @@ def signed_url_for_payment(key_or_folder: str, expires: int = 600) -> Optional[s
         return None
     try:
         sb = get_client()
-        out = sb.storage.from_("quotes").create_signed_url(file_key, expires)
+        out = sb.storage.from_("payments").create_signed_url(file_key, expires)
         return (out or {}).get("signed_url")
     except Exception:
         return None

@@ -46,23 +46,38 @@ def _fmt_dt(s: str) -> str:
 
 def _render_preview_if_pdf(url: str, file_key: str, title: str):
     """
-    Muestra link + vista de la primera página si es PDF.
+    Muestra link, botón de descarga y vista de la primera página si es PDF.
     """
     if not url:
         return
     st.link_button(f"Abrir {title} en pestaña nueva", url, use_container_width=True)
-    if file_key and file_key.lower().endswith(".pdf"):
-        try:
-            resp = requests.get(url, timeout=10)
-            resp.raise_for_status()
-            pdf_viewer(
-                resp.content,
-                width=700,
-                height=900,
-                pages_to_render=[1],
-            )
-        except Exception as e:
-            st.caption(f"No se pudo previsualizar el PDF de {title}: {e}")
+
+    file_bytes = None
+    try:
+        resp = requests.get(url, timeout=10)
+        resp.raise_for_status()
+        file_bytes = resp.content
+    except Exception as e:
+        st.caption(f"No se pudo obtener el archivo de {title}: {e}")
+
+    if file_bytes:
+        fname = os.path.basename(file_key) if file_key else title.replace(" ", "_")
+        st.download_button(
+            f"Descargar {title}",
+            file_bytes,
+            file_name=fname,
+            use_container_width=True,
+        )
+        if file_key and file_key.lower().endswith(".pdf"):
+            try:
+                pdf_viewer(
+                    file_bytes,
+                    width=700,
+                    height=900,
+                    pages_to_render=[1],
+                )
+            except Exception as e:
+                st.caption(f"No se pudo previsualizar el PDF de {title}: {e}")
 
 # ---------------------------------------------------
 # Tabs
@@ -227,9 +242,9 @@ with tab2:
                         st.error("Debes adjuntar un comprobante para marcar como pagado.")
                         st.stop()
 
-                    # Subir archivo al bucket 'quotes' en una CARPETA y guardar la carpeta
+                    # Subir archivo al bucket 'payments' en una CARPETA y guardar la carpeta
                     sb = get_client()
-                    bucket = "quotes"
+                    bucket = "payments"
                     folder = f"{expense_id}/pago-{uuid.uuid4().hex}"
                     file_path = f"{folder}/{pay_file.name}"
                     sb.storage.from_(bucket).upload(file_path, pay_file.getvalue())

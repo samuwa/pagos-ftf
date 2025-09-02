@@ -207,7 +207,11 @@ with tab2:
                     sb = get_client()
                     bucket = "payments"
                     file_id = uuid.uuid4().hex + Path(pay_file.name).suffix
-                    sb.storage.from_(bucket).upload(file_id, pay_file.getvalue())
+                    sb.storage.from_(bucket).upload(
+                        file_id,
+                        pay_file.getvalue(),
+                        {"content-type": pay_file.type},
+                    )
 
                     # Actualizar estado + payment_doc_key y log
                     mark_expense_as_paid(

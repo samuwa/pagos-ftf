@@ -91,7 +91,11 @@ with tab_nueva:
                 bucket = "quotes"  # tu bucket
                 file_id = uuid.uuid4().hex + Path(file.name).suffix
 
-                sb.storage.from_(bucket).upload(file_id, file.getvalue())
+                sb.storage.from_(bucket).upload(
+                    file_id,
+                    file.getvalue(),
+                    {"content-type": file.type},
+                )
 
                 expense_id = create_expense(
                     requested_by=user_id,

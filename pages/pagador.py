@@ -141,9 +141,9 @@ with tab2:
             f"**Solicitante:** {exp.get('requested_by_email','')}"
         )
 
-        rec_key = exp.get("supporting_doc_key") or ""
+        rec_key = exp.get("supporting_doc_key")
 
-        pay_key = exp.get("payment_doc_key") or ""
+        pay_key = exp.get("payment_doc_key")
         cols_files = st.columns(2)
         with cols_files[0]:
             _render_download(rec_key, "Documento de respaldo", signed_url_for_receipt)
@@ -207,7 +207,11 @@ with tab2:
                     sb = get_client()
                     bucket = "payments"
                     file_id = uuid.uuid4().hex + Path(pay_file.name).suffix
-                    sb.storage.from_(bucket).upload(file_id, pay_file.getvalue())
+                    sb.storage.from_(bucket).upload(
+                        file_id,
+                        pay_file.getvalue(),
+                        {"content-type": pay_file.type},
+                    )
 
                     # Actualizar estado + payment_doc_key y log
                     mark_expense_as_paid(
@@ -309,9 +313,9 @@ with tab3:
             f"**Solicitante:** {exp.get('requested_by_email','')}  \n"
             f"**Creado:** {_fmt_dt(exp['created_at'])}"
         )
-        rec_key = exp.get("supporting_doc_key") or ""
+        rec_key = exp.get("supporting_doc_key")
 
-        pay_key = exp.get("payment_doc_key") or ""
+        pay_key = exp.get("payment_doc_key")
         cols_files = st.columns(2)
         with cols_files[0]:
             _render_download(rec_key, "Documento de respaldo", signed_url_for_receipt)

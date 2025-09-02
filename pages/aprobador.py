@@ -130,8 +130,8 @@ with tab2:
 
     # ---- Left: details, logs, comments
     with left:
-        rec_key = exp.get("supporting_doc_key") or ""
-        pay_key = exp.get("payment_doc_key") or ""
+        rec_key = exp.get("supporting_doc_key")
+        pay_key = exp.get("payment_doc_key")
         details_md = (
             f"**Proveedor:** {exp['supplier_name']}  \n"
             f"**Descripción:** {exp.get('description','')}  \n"
@@ -297,8 +297,8 @@ with tab3:
             f"**Solicitante:** {exp.get('requested_by_email','')}  \n"
             f"**Creado:** {_fmt_dt(exp['created_at'])}"
         )
-        rec_key = exp.get("supporting_doc_key") or ""
-        pay_key = exp.get("payment_doc_key") or ""
+        rec_key = exp.get("supporting_doc_key")
+        pay_key = exp.get("payment_doc_key")
         cols_files = st.columns(2)
         with cols_files[0]:
 

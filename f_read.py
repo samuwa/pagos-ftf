@@ -1,11 +1,8 @@
-import os
 import streamlit as st
 from typing import List, Dict, Any, Optional, Tuple, Set, Iterable
 from f_auth import get_client
 from collections import defaultdict
 import datetime as dt
-import requests
-from streamlit_pdf_viewer import pdf_viewer
 import pandas as pd
 
 # ==========================
@@ -414,45 +411,6 @@ def signed_url_for_payment(key: str, expires: int = 600) -> Optional[str]:
         return None
 
 
-def render_quote_preview_if_pdf(supporting_doc_key: str):
-    """
-    Si el quote es PDF, muestra la primera página con streamlit-pdf-viewer y
-    siempre muestra un botón para abrir el archivo en una pestaña nueva.
-    """
-    file_key = receipt_file_key(supporting_doc_key)
-    url = signed_url_for_receipt(supporting_doc_key, expires=600)
-    if not url:
-        return
-
-    # Link siempre
-    st.link_button("Abrir documento en pestaña nueva", url, use_container_width=True)
-
-    file_bytes = None
-    try:
-        resp = requests.get(url, timeout=10)
-        resp.raise_for_status()
-        file_bytes = resp.content
-    except Exception as e:
-        st.caption(f"No se pudo obtener el documento: {e}")
-
-    if file_bytes:
-        fname = os.path.basename(file_key) if file_key else "documento"
-        st.download_button(
-            "Descargar documento",
-            file_bytes,
-            file_name=fname,
-            use_container_width=True,
-        )
-        if file_key and file_key.lower().endswith(".pdf"):
-            try:
-                pdf_viewer(
-                    file_bytes,
-                    width=700,            # ver nota en PyPI: definir width dentro de tabs
-                    height=900,
-                    pages_to_render=[1],  # solo la primera página
-                )
-            except Exception as e:
-                st.caption(f"No se pudo previsualizar el PDF: {e}")
 
 def _emails_by_ids(ids: Iterable[str]) -> dict:
     ids = [i for i in ids if i]

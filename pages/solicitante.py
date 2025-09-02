@@ -232,6 +232,14 @@ with tab_detalle:
                 )
             except Exception as e:
                 st.caption(f"No se pudo descargar el recibo: {e}")
+        else:
+            st.download_button(
+                "Descargar recibo",
+                b"",
+                file_name="recibo",
+                use_container_width=True,
+                disabled=True,
+            )
     with colf2:
         if pay_url:
             st.link_button("Ver comprobante de pago", pay_url, use_container_width=True)
@@ -246,6 +254,14 @@ with tab_detalle:
                 )
             except Exception as e:
                 st.caption(f"No se pudo descargar el comprobante: {e}")
+        else:
+            st.download_button(
+                "Descargar comprobante",
+                b"",
+                file_name="comprobante",
+                use_container_width=True,
+                disabled=True,
+            )
 
     st.divider()
 

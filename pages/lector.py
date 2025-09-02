@@ -5,7 +5,6 @@ import os
 import requests
 import pandas as pd
 import streamlit as st
-from streamlit_pdf_viewer import pdf_viewer
 
 from f_auth import require_lector, current_user
 from f_read import (
@@ -34,33 +33,29 @@ def _fmt_dt(dt_str: str) -> str:
     except Exception:
         return dt_str
 
-def _render_preview_if_pdf(url: str, file_key: str, title: str):
-    """Renderiza un link, botón de descarga y vista previa del PDF."""
-    if not url:
-        return
-    st.link_button(f"Abrir {title} en pestaña nueva", url, use_container_width=True)
-
-    file_bytes = None
-    try:
-        resp = requests.get(url, timeout=10)
-        resp.raise_for_status()
-        file_bytes = resp.content
-    except Exception as e:
-        st.caption(f"No se pudo obtener el archivo de {title}: {e}")
-
-    if file_bytes:
-        fname = os.path.basename(file_key) if file_key else title.replace(" ", "_")
+def _render_download(url: str, file_key: str, title: str):
+    """Renderiza link y botón de descarga; deshabilita si no hay archivo."""
+    if url:
+        st.link_button(f"Abrir {title} en pestaña nueva", url, use_container_width=True)
+        try:
+            resp = requests.get(url, timeout=10)
+            resp.raise_for_status()
+            st.download_button(
+                f"Descargar {title}",
+                resp.content,
+                file_name=os.path.basename(file_key) if file_key else title.replace(" ", "_"),
+                use_container_width=True,
+            )
+        except Exception as e:
+            st.caption(f"No se pudo obtener el archivo de {title}: {e}")
+    else:
         st.download_button(
             f"Descargar {title}",
-            file_bytes,
-            file_name=fname,
+            b"",
+            file_name=title.replace(" ", "_"),
             use_container_width=True,
+            disabled=True,
         )
-        if file_key and file_key.lower().endswith(".pdf"):
-            try:
-                pdf_viewer(file_bytes, width=700, height=900, pages_to_render=[1])
-            except Exception as e:
-                st.caption(f"No se pudo previsualizar el PDF de {title}: {e}")
 
 # --------------------------
 # Filtros globales
@@ -126,73 +121,72 @@ if df.empty:
     st.stop()
 
 # --------------------------
-# Métricas globales
+# Tabs: Reporte y Detalle
 # --------------------------
-m1, m2, m3, m4 = st.columns(4)
-m1.metric("Gastos (conteo)", f"{len(df):,}")
-m2.metric("Monto total", f"{df['amount'].sum():,.2f}")
-m3.metric("Monto promedio", f"{df['amount'].mean():,.2f}")
-m4.metric("Monto mediano", f"{df['amount'].median():,.2f}")
+tab_reporte, tab_detalle = st.tabs(["Reporte", "Detalle"])
 
-st.divider()
+# === Tab Reporte ===
+with tab_reporte:
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Gastos (conteo)", f"{len(df):,}")
+    m2.metric("Monto total", f"{df['amount'].sum():,.2f}")
+    m3.metric("Monto promedio", f"{df['amount'].mean():,.2f}")
+    m4.metric("Monto mediano", f"{df['amount'].median():,.2f}")
 
-# --------------------------
-# Tabs: Resumen, Comparar, Detalle
-# --------------------------
-tab_resumen, tab_comparar, tab_detalle = st.tabs(["Resumen", "Comparar", "Detalle"])
+    st.divider()
 
-# === Tab Resumen: tablas rápidas ===
-with tab_resumen:
-    st.subheader("Resumen por dimensión")
+    tab_resumen, tab_comparar = st.tabs(["Resumen", "Comparar"])
 
-    def _top_table(series, title, n=10):
-        if series.empty:
-            st.caption(f"Sin datos para {title}.")
-            return
-        tb = (series.value_counts().head(n)).rename("Gastos")
-        st.write(f"**Top {n} por {title}**")
-        st.dataframe(tb, use_container_width=True)
+    with tab_resumen:
+        st.subheader("Resumen por dimensión")
 
-    cA, cB, cC = st.columns(3)
-    with cA:
-        _top_table(df["supplier_name"], "Proveedor")
-    with cB:
-        _top_table(df["requested_by_email"], "Solicitante")
-    with cC:
-        _top_table(df["approved_by_email"], "Aprobador")
+        def _top_table(series, title, n=10):
+            if series.empty:
+                st.caption(f"Sin datos para {title}.")
+                return
+            tb = (series.value_counts().head(n)).rename("Gastos")
+            st.write(f"**Top {n} por {title}**")
+            st.dataframe(tb, use_container_width=True)
 
-    st.subheader("Evolución (por fecha de pago)")
-    ts = df.copy()
-    ts["paid_date"] = pd.to_datetime(ts["paid_at"]).dt.date
-    if not ts.empty:
-        grp = ts.groupby("paid_date").agg(
-            gastos=("id", "count"),
-            monto=("amount", "sum")
-        ).reset_index()
-        c1, c2 = st.columns(2)
-        with c1:
-            st.line_chart(grp, x="paid_date", y="gastos", use_container_width=True)
-        with c2:
-            st.line_chart(grp, x="paid_date", y="monto", use_container_width=True)
-    else:
-        st.caption("Sin datos para serie temporal.")
+        cA, cB, cC = st.columns(3)
+        with cA:
+            _top_table(df["supplier_name"], "Proveedor")
+        with cB:
+            _top_table(df["requested_by_email"], "Solicitante")
+        with cC:
+            _top_table(df["approved_by_email"], "Aprobador")
 
-# === Tab Comparar: barras por dimensión ===
-with tab_comparar:
-    st.subheader("Comparar por dimensión")
+        st.subheader("Evolución (por fecha de pago)")
+        ts = df.copy()
+        ts["paid_date"] = pd.to_datetime(ts["paid_at"]).dt.date
+        if not ts.empty:
+            grp = ts.groupby("paid_date").agg(
+                gastos=("id", "count"),
+                monto=("amount", "sum")
+            ).reset_index()
+            c1, c2 = st.columns(2)
+            with c1:
+                st.line_chart(grp, x="paid_date", y="gastos", use_container_width=True)
+            with c2:
+                st.line_chart(grp, x="paid_date", y="monto", use_container_width=True)
+        else:
+            st.caption("Sin datos para serie temporal.")
 
-    dim = st.radio("Dimensión", options=["Proveedores", "Solicitantes", "Aprobadores", "Categorías"], horizontal=True)
+    with tab_comparar:
+        st.subheader("Comparar por dimensión")
 
-    if dim == "Proveedores":
-        ser = df.groupby("supplier_name")["amount"].sum().sort_values(ascending=False)
-    elif dim == "Solicitantes":
-        ser = df.groupby("requested_by_email")["amount"].sum().sort_values(ascending=False)
-    elif dim == "Aprobadores":
-        ser = df.groupby("approved_by_email")["amount"].sum().sort_values(ascending=False)
-    else:
-        ser = df.groupby("category")["amount"].sum().sort_values(ascending=False)
+        dim = st.radio("Dimensión", options=["Proveedores", "Solicitantes", "Aprobadores", "Categorías"], horizontal=True)
 
-    st.bar_chart(ser.head(20), use_container_width=True)
+        if dim == "Proveedores":
+            ser = df.groupby("supplier_name")["amount"].sum().sort_values(ascending=False)
+        elif dim == "Solicitantes":
+            ser = df.groupby("requested_by_email")["amount"].sum().sort_values(ascending=False)
+        elif dim == "Aprobadores":
+            ser = df.groupby("approved_by_email")["amount"].sum().sort_values(ascending=False)
+        else:
+            ser = df.groupby("category")["amount"].sum().sort_values(ascending=False)
+
+        st.bar_chart(ser.head(20), use_container_width=True)
 
 # === Tab Detalle: tabla y detalle de un gasto ===
 with tab_detalle:
@@ -245,9 +239,11 @@ with tab_detalle:
     st.caption("Documento de respaldo")
     rec_key = row.get("supporting_doc_key") or ""
     rec_url = signed_url_for_receipt(rec_key, 600)
-    _render_preview_if_pdf(rec_url, rec_key or "", "documento de respaldo")
+
+    _render_download(rec_url, rec_key or "", "documento de respaldo")
+
 
     st.caption("Comprobante de pago")
     pay_key = row.get("payment_doc_key") or ""
     pay_url = signed_url_for_payment(pay_key, 600)
-    _render_preview_if_pdf(pay_url, pay_key or "", "comprobante de pago")
+    _render_download(pay_url, pay_key or "", "comprobante de pago")

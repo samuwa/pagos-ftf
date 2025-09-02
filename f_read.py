@@ -35,7 +35,6 @@ def _render_download(key: str, label: str, url_fn: Callable[[str, int], Optional
         except Exception as e:  # pragma: no cover - UI feedback
             st.caption(f"No se pudo descargar {label}: {e}")
     else:
-        st.warning(f"No se encontró {label}.")
         st.download_button(
             label,
             b"",

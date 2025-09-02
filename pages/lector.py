@@ -14,8 +14,6 @@ from f_read import (
     list_requesters_for_approver,   # reutilizamos para obtener solicitantes
     list_approvers_for_viewer,      # NUEVO helper abajo
     list_paid_expenses_enriched,    # NUEVO helper abajo
-    receipt_file_key,
-    payment_file_key,
     signed_url_for_receipt,
     signed_url_for_payment,
 )
@@ -245,11 +243,11 @@ with tab_detalle:
 
     st.divider()
     st.caption("Documento de respaldo")
-    rec_key = receipt_file_key(row.get("supporting_doc_key") or "")
-    rec_url = signed_url_for_receipt(row.get("supporting_doc_key") or "", 600)
+    rec_key = row.get("supporting_doc_key") or ""
+    rec_url = signed_url_for_receipt(rec_key, 600)
     _render_preview_if_pdf(rec_url, rec_key or "", "documento de respaldo")
 
     st.caption("Comprobante de pago")
-    pay_key = payment_file_key(row.get("payment_doc_key") or "")
-    pay_url = signed_url_for_payment(row.get("payment_doc_key") or "", 600)
+    pay_key = row.get("payment_doc_key") or ""
+    pay_url = signed_url_for_payment(pay_key, 600)
     _render_preview_if_pdf(pay_url, pay_key or "", "comprobante de pago")

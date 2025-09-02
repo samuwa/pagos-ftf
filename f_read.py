@@ -184,19 +184,6 @@ def recent_similar_expenses(supplier_id: str, amount: float, days: int = 30) -> 
     )
     return res.data or []
 
-def signed_url_for_receipt(key: str, expires: int = 300) -> Optional[str]:
-    """
-    Create a short-lived signed URL for a receipt path (bucket 'receipts').
-    """
-    if not key:
-        return None
-    try:
-        sb = get_client()
-        out = sb.storage.from_("quotes").create_signed_url(key, expires)
-        return (out or {}).get("signed_url")
-    except Exception:
-        return None
-
 def _emails_by_ids(ids: Iterable[str]) -> dict:
     ids = [i for i in ids if i]
     if not ids:
@@ -386,49 +373,24 @@ def list_expenses_by_requester(user_id: str) -> List[Dict[str, Any]]:
     for r in rows:
         r["requested_by_email"] = email
     return rows
-@st.cache_data(ttl=30, show_spinner=False)
-def _first_object_in_folder(bucket: str, key_or_folder: str) -> Optional[str]:
+def receipt_file_key(key: str) -> Optional[str]:
     """
-    Devuelve la key del primer archivo dentro de ``key_or_folder``.
-    Si ``key_or_folder`` ya es un archivo, la retorna tal cual.
-    Si existen subcarpetas, desciende hasta hallar un archivo.
+    Normaliza y retorna la key almacenada para el documento de respaldo.
+    Ya no se buscan archivos dentro de carpetas.
     """
-    sb = get_client()
-    path = (key_or_folder or "").strip().strip("/")
-    if not path:
-        return None
-
-    # Descender recursivamente hasta encontrar un archivo (máx. 10 niveles)
-    for _ in range(10):
-        try:
-            items = sb.storage.from_(bucket).list(
-                path=path, sortBy={"column": "updated_at", "order": "desc"}
-            )
-        except Exception:
-            return path if "/" in path else None
-
-        if not items:
-            return path if "/" in path else None
-
-        name = (items[0] or {}).get("name")
-        if not name:
-            return path if "/" in path else None
-
-        path = f"{path}/{name}"
-
-    return path if "/" in path else None
+    key = (key or "").strip().strip("/")
+    return key or None
 
 
-def receipt_file_key(key_or_folder: str) -> Optional[str]:
-    """Conveniencia: primer archivo del folder (bucket 'quotes') para el recibo/cotización."""
-    return _first_object_in_folder("quotes", key_or_folder)
+def payment_file_key(key: str) -> Optional[str]:
+    """Normaliza y retorna la key almacenada para el comprobante de pago."""
+    key = (key or "").strip().strip("/")
+    return key or None
 
 
-def signed_url_for_receipt(key_or_folder: str, expires: int = 600) -> Optional[str]:
-    """
-    Crea una URL firmada para el primer archivo dentro del folder guardado en expenses.supporting_doc_key.
-    """
-    file_key = receipt_file_key(key_or_folder)
+def signed_url_for_receipt(key: str, expires: int = 600) -> Optional[str]:
+    """Crea una URL firmada usando la key guardada en ``supporting_doc_key``."""
+    file_key = receipt_file_key(key)
     if not file_key:
         return None
     try:
@@ -439,11 +401,9 @@ def signed_url_for_receipt(key_or_folder: str, expires: int = 600) -> Optional[s
         return None
 
 
-def signed_url_for_payment(key_or_folder: str, expires: int = 600) -> Optional[str]:
-    """
-    Igual que arriba, pero para el comprobante de pago si lo guardas también como carpeta.
-    """
-    file_key = _first_object_in_folder("payments", key_or_folder)
+def signed_url_for_payment(key: str, expires: int = 600) -> Optional[str]:
+    """Crea una URL firmada usando la key guardada en ``payment_doc_key``."""
+    file_key = payment_file_key(key)
     if not file_key:
         return None
     try:
@@ -493,37 +453,6 @@ def render_quote_preview_if_pdf(supporting_doc_key: str):
                 )
             except Exception as e:
                 st.caption(f"No se pudo previsualizar el PDF: {e}")
-
-@st.cache_data(ttl=30, show_spinner=False)
-def payment_file_key(key_or_folder: str) -> Optional[str]:
-    """
-    Primer archivo dentro del folder de 'payment_doc_key' en el bucket 'payments'.
-    """
-    sb = get_client()
-    key = (key_or_folder or "").strip().strip("/")
-    if not key:
-        return None
-    try:
-        items = sb.storage.from_("payments").list(path=key, sortBy={"column": "updated_at", "order": "desc"})
-        for it in (items or []):
-            name = it.get("name")
-            if name:
-                return f"{key}/{name}"
-    except Exception:
-        pass
-    return key if "/" in key else None
-
-def signed_url_for_payment(key_or_folder: str, expires: int = 600) -> Optional[str]:
-    file_key = payment_file_key(key_or_folder)
-    if not file_key:
-        return None
-    try:
-        sb = get_client()
-        out = sb.storage.from_("payments").create_signed_url(file_key, expires)
-        return (out or {}).get("signed_url")
-    except Exception:
-        return None
-
 
 def _emails_by_ids(ids: Iterable[str]) -> dict:
     ids = [i for i in ids if i]

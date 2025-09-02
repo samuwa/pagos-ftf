@@ -212,11 +212,9 @@ with tab_detalle:
 
     st.divider()
     rec_key = row.get("supporting_doc_key") or ""
-    rec_url = signed_url_for_receipt(rec_key, 600)
     pay_key = row.get("payment_doc_key") or ""
-    pay_url = signed_url_for_payment(pay_key, 600)
     cols_files = st.columns(2)
     with cols_files[0]:
-        _render_download(rec_url, rec_key or "", "Documento de respaldo")
+        _render_download(rec_key or "", "Documento de respaldo", signed_url_for_receipt)
     with cols_files[1]:
-        _render_download(pay_url, pay_key or "", "Comprobante de pago")
+        _render_download(pay_key or "", "Comprobante de pago", signed_url_for_payment)

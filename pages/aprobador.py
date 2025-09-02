@@ -143,16 +143,11 @@ with tab2:
         st.markdown(details_md)
         cols_files = st.columns(2)
         with cols_files[0]:
-            if rec_key:
-                sb = get_client()
-                out = sb.storage.from_("quotes").create_signed_url(rec_key, 600)
-                rec_url = (out or {}).get("signed_url")
-                _render_download(rec_url, rec_key, "Documento de respaldo")
-            else:
-                st.warning("No se encontró archivo")
+
+            _render_download(rec_key, "Documento de respaldo", signed_url_for_receipt)
         with cols_files[1]:
-            pay_url = signed_url_for_payment(pay_key, 600)
-            _render_download(pay_url, pay_key, "Comprobante de pago")
+            _render_download(pay_key, "Comprobante de pago", signed_url_for_payment)
+
 
         st.divider()
         st.subheader("Historial (logs)")
@@ -305,16 +300,10 @@ with tab3:
         pay_key = exp.get("payment_doc_key") or ""
         cols_files = st.columns(2)
         with cols_files[0]:
-            if rec_key:
-                sb = get_client()
-                out = sb.storage.from_("quotes").create_signed_url(rec_key, 600)
-                rec_url = (out or {}).get("signed_url")
-                _render_download(rec_url, rec_key, "Documento de respaldo")
-            else:
-                st.warning("No se encontró archivo")
+
+            _render_download(rec_key, "Documento de respaldo", signed_url_for_receipt)
         with cols_files[1]:
-            pay_url = signed_url_for_payment(pay_key, 600)
-            _render_download(pay_url, pay_key, "Comprobante de pago")
+            _render_download(pay_key, "Comprobante de pago", signed_url_for_payment)
 
         st.divider()
         logs = list_expense_logs(eid)

@@ -142,24 +142,12 @@ with tab2:
 
         rec_key = exp.get("supporting_doc_key") or ""
 
-        rec_url = signed_url_for_receipt(rec_key, 600)
-        pay_url, pay_key = payment_doc_url_for_expense(expense_id, 600)
-
+        pay_key = exp.get("payment_doc_key") or ""
         cols_files = st.columns(2)
         with cols_files[0]:
-            if rec_key:
-                sb = get_client()
-                out = sb.storage.from_("quotes").create_signed_url(rec_key, 600)
-                rec_url = (out or {}).get("signed_url")
-                _render_download(rec_url, rec_key, "Documento de respaldo")
-            else:
-                st.warning("No se encontró archivo")
+            _render_download(rec_key, "Documento de respaldo", signed_url_for_receipt)
         with cols_files[1]:
-
-            if pay_url:
-                _render_download(pay_url, pay_key or "", "Comprobante de pago")
-            else:
-                st.caption("No se encontró archivo")
+            _render_download(pay_key, "Comprobante de pago", signed_url_for_payment)
 
 
         st.divider()
@@ -322,24 +310,12 @@ with tab3:
         )
         rec_key = exp.get("supporting_doc_key") or ""
 
-        rec_url = signed_url_for_receipt(rec_key, 600)
-        pay_url, pay_key = payment_doc_url_for_expense(eid, 600)
-
+        pay_key = exp.get("payment_doc_key") or ""
         cols_files = st.columns(2)
         with cols_files[0]:
-            if rec_key:
-                sb = get_client()
-                out = sb.storage.from_("quotes").create_signed_url(rec_key, 600)
-                rec_url = (out or {}).get("signed_url")
-                _render_download(rec_url, rec_key, "Documento de respaldo")
-            else:
-                st.warning("No se encontró archivo")
+            _render_download(rec_key, "Documento de respaldo", signed_url_for_receipt)
         with cols_files[1]:
-
-            if pay_url:
-                _render_download(pay_url, pay_key or "", "Comprobante de pago")
-            else:
-                st.caption("No se encontró archivo")
+            _render_download(pay_key, "Comprobante de pago", signed_url_for_payment)
 
 
         st.divider()

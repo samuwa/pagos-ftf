@@ -1,5 +1,5 @@
 import streamlit as st
-from typing import List, Dict, Any, Optional, Tuple, Set, Iterable
+from typing import List, Dict, Any, Optional, Tuple, Set, Iterable, Callable
 from f_auth import get_client
 from collections import defaultdict
 import datetime as dt
@@ -11,14 +11,16 @@ import pandas as pd
 # --------------------------
 # Utilidades de UI
 # --------------------------
-def _render_download(url: str, key: str, label: str) -> None:
-    """Renderiza un botón de descarga para una URL firmada.
+def _render_download(key: str, label: str, url_fn: Callable[[str, int], Optional[str]]) -> None:
+    """Renderiza un botón de descarga para un archivo en Supabase Storage.
 
-    Si ``url`` es válida, intenta descargar el contenido para exponerlo a ``st.download_button``.
-    En caso contrario, muestra el botón deshabilitado. El texto del botón es ``label``.
+    ``url_fn`` debe ser una función que retorne una URL firmada para ``key``.
+    El botón de descarga solo estará habilitado si la URL firmada no está vacía.
+    En caso contrario se mostrará un mensaje de advertencia y el botón permanecerá deshabilitado.
     """
 
     dl_key = f"dl-{label}-{uuid.uuid4().hex}"
+    url = url_fn(key, 600)
     if url:
         try:
             resp = requests.get(url, timeout=10)
@@ -33,9 +35,11 @@ def _render_download(url: str, key: str, label: str) -> None:
         except Exception as e:  # pragma: no cover - UI feedback
             st.caption(f"No se pudo descargar {label}: {e}")
     else:
+        st.warning(f"No se encontró {label}.")
         st.download_button(
             label,
             b"",
+            file_name=os.path.basename(key) if key else label.replace(" ", "_"),
             key=dl_key,
             disabled=True,
             width="content",

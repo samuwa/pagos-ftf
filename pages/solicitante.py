@@ -241,14 +241,29 @@ with tab_detalle:
                 except Exception as e:
                     st.error(f"No se pudo guardar el comentario: {e}")
 
+    def _fmt_dt(s: str) -> str:
+        try:
+            return pd.to_datetime(s).strftime("%Y-%m-%d %H:%M")
+        except Exception:
+            return s
+
     # Comentarios (solo los de tipo 'comment')
     st.subheader("Comentarios")
     comentarios = list_expense_comments(sel_id)
     if not comentarios:
         st.caption("No hay comentarios.")
     else:
-        for c in comentarios:
-            st.markdown(f"- **{c['created_at']}** — {c.get('actor_email','(sin email)')}: {c['text']}")
+        com_df = pd.DataFrame(
+            [
+                {
+                    "Fecha": _fmt_dt(c["created_at"]),
+                    "Autor": c.get("actor_email", ""),
+                    "Comentario": c["text"],
+                }
+                for c in comentarios
+            ]
+        )
+        st.dataframe(com_df, use_container_width=True, hide_index=True)
 
     st.divider()
 
@@ -258,9 +273,15 @@ with tab_detalle:
     if not logs:
         st.caption("No hay historial.")
     else:
-        for lg in logs:
-            det_txt = lg.get("details_text", "")
-            st.markdown(
-                f"- **{lg['created_at']}** — {lg['action']} — {lg.get('actor_email','(sin email)')}  "
-                + (f"— {det_txt}" if det_txt else "")
-            )
+        log_df = pd.DataFrame(
+            [
+                {
+                    "Fecha": _fmt_dt(lg["created_at"]),
+                    "Acción": lg["action"],
+                    "Actor": lg.get("actor_email", ""),
+                    "Detalles": lg.get("details_text", ""),
+                }
+                for lg in logs
+            ]
+        )
+        st.dataframe(log_df, use_container_width=True, hide_index=True)

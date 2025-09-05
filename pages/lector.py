@@ -3,6 +3,7 @@
 
 import pandas as pd
 import streamlit as st
+import datetime as dt
 
 from f_auth import require_lector, current_user
 from f_read import (
@@ -35,17 +36,27 @@ def _fmt_dt(dt_str: str) -> str:
 # --------------------------
 # Filtros globales
 # --------------------------
-st.title("Dashboard de gastos pagados")
+st.write("**Dashboard de gastos pagados**")
 
 col_dates = st.container()
 with col_dates:
     c1, c2 = st.columns(2)
     with c1:
         st.caption("Rango por **fecha de creación**")
-        created_range = st.date_input("Desde / Hasta (creado)", value=None, key="created_range", help="Filtra por expenses.created_at")
+        created_range = st.date_input(
+            "Desde / Hasta (creado)",
+            value=(dt.date.today() - dt.timedelta(days=30), dt.date.today()),
+            key="created_range",
+            help="Filtra por expenses.created_at",
+        )
     with c2:
         st.caption("Rango por **fecha de pago**")
-        paid_range = st.date_input("Desde / Hasta (pagado)", value=None, key="paid_range", help="Filtra por fecha de marcado como pagado (logs)")
+        paid_range = st.date_input(
+            "Desde / Hasta (pagado)",
+            value=(dt.date.today() - dt.timedelta(days=30), dt.date.today()),
+            key="paid_range",
+            help="Filtra por fecha de marcado como pagado (logs)",
+        )
 
 # Opciones de filtros por dimensión
 suppliers = list_suppliers()
@@ -66,7 +77,7 @@ with c6:
 
 # Normaliza fechas → ISO límites (inicio de día, fin de día)
 def _range_to_iso(r):
-    if isinstance(r, list) and len(r) == 2 and r[0] and r[1]:
+    if isinstance(r, (list, tuple)) and len(r) == 2 and r[0] and r[1]:
         start = pd.to_datetime(r[0]).strftime("%Y-%m-%dT00:00:00Z")
         end = pd.to_datetime(r[1]).strftime("%Y-%m-%dT23:59:59Z")
         return start, end
@@ -113,7 +124,7 @@ with tab_reporte:
     tab_resumen, tab_comparar = st.tabs(["Resumen", "Comparar"])
 
     with tab_resumen:
-        st.subheader("Resumen por dimensión")
+        st.write("**Resumen por dimensión**")
 
         def _top_table(series, title, n=10):
             if series.empty:
@@ -131,7 +142,7 @@ with tab_reporte:
         with cC:
             _top_table(df["approved_by_email"], "Aprobador")
 
-        st.subheader("Evolución (por fecha de pago)")
+        st.write("**Evolución (por fecha de pago)**")
         ts = df.copy()
         ts["paid_date"] = pd.to_datetime(ts["paid_at"]).dt.date
         if not ts.empty:
@@ -148,7 +159,7 @@ with tab_reporte:
             st.caption("Sin datos para serie temporal.")
 
     with tab_comparar:
-        st.subheader("Comparar por dimensión")
+        st.write("**Comparar por dimensión**")
 
         dim = st.radio("Dimensión", options=["Proveedores", "Solicitantes", "Aprobadores", "Categorías"], horizontal=True)
 
@@ -165,7 +176,7 @@ with tab_reporte:
 
 # === Tab Detalle: tabla y detalle de un gasto ===
 with tab_detalle:
-    st.subheader("Gastos filtrados")
+    st.write("**Gastos filtrados**")
 
     # Tabla con columnas claves
     show_df = df.copy()

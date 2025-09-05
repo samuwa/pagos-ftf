@@ -103,15 +103,14 @@ def remove_role(user_id: str, role: str) -> None:
         .execute()
     )
 
-def create_expense_log(expense_id: str, actor_id: str, action: str, message: str) -> None:
-    """Inserta un registro en ``expense_logs`` usando el nuevo campo ``message``."""
-    if not (expense_id and actor_id and action and (message or "").strip()):
+def create_expense_log(expense_id: str, actor_id: str, message: str) -> None:
+    """Inserta un registro en ``expense_logs`` con un ``message`` obligatorio."""
+    if not (expense_id and actor_id and (message or "").strip()):
         raise ValueError("Faltan datos para crear el log.")
     sb = get_client()
     payload = {
         "expense_id": expense_id,
         "actor_id": actor_id,
-        "action": action,
         "message": message.strip(),
     }
     sb.schema("public").table("expense_logs").insert(payload).execute()
@@ -153,32 +152,25 @@ def create_expense(
 
     if expense_id:
         try:
-            msg = (
-                f"create: supplier={supplier_id}, amount={round(float(amount), 2)}, "
-                f"category={category}"
-            )
-            if description:
-                msg += f", description={description}"
             create_expense_log(
                 expense_id=expense_id,
                 actor_id=requested_by,
-                action="create",
-                message=msg,
+                message="Solicitud creada",
             )
         except Exception:
             pass
 
     return expense_id
 
-def add_expense_comment(expense_id: str, actor_id: str, text: str) -> None:
-    """Guarda un comentario para la solicitud sin generar un nuevo log."""
-    if not (expense_id and actor_id and (text or "").strip()):
+def add_expense_comment(expense_id: str, created_by: str, message: str) -> None:
+    """Inserta un comentario en ``expense_comments``."""
+    if not (expense_id and created_by and (message or "").strip()):
         raise ValueError("Faltan datos para comentar.")
     sb = get_client()
     payload = {
         "expense_id": expense_id,
-        "author_id": actor_id,
-        "text": text.strip(),
+        "created_by": created_by,
+        "message": message.strip(),
     }
     sb.schema("public").table("expense_comments").insert(payload).execute()
 
@@ -190,35 +182,50 @@ VALID_FOR_APPROVER = {"solicitado", "aprobado", "rechazado"}  # 'pagado' is for 
 
 def update_expense_status(expense_id: str, actor_id: str, new_status: str, comment: Optional[str] = None) -> None:
     """
-    Cambia estado a 'solicitado'/'aprobado'/'rechazado' y agrega un log.
-    Si el estado es 'aprobado' o 'rechazado', también establece approved_by = actor_id.
+    Cambia estado y agrega un log simple. Si ``comment`` se provee, se guarda como
+    comentario aparte.
     """
     ns = (new_status or "").strip().lower()
     if ns not in VALID_FOR_APPROVER:
         raise ValueError("Estado inválido para aprobador.")
 
     sb = get_client()
+    # obtener estado anterior para el mensaje del log
+    res = (
+        sb.schema("public")
+        .table("expenses")
+        .select("status")
+        .eq("id", expense_id)
+        .limit(1)
+        .execute()
+    )
+    prev_status = (res.data or [{}])[0].get("status")
+
     update = {"status": ns}
     if ns in ("aprobado", "rechazado"):
         update["approved_by"] = actor_id
 
     sb.schema("public").table("expenses").update(update).eq("id", expense_id).execute()
 
-    msg = f"status -> {ns}"
-    if comment:
-        msg += f"; {comment}"
-    create_expense_log(expense_id, actor_id, action="update", message=msg)
+    create_expense_log(
+        expense_id,
+        actor_id,
+        message=f"Solicitud actualizada de {prev_status} a {ns}",
+    )
+    if comment and comment.strip():
+        add_expense_comment(expense_id, actor_id, comment.strip())
 
 def mark_expense_as_paid(
     expense_id: str,
     actor_id: str,
     payment_doc_key: str,
+    payment_date: str,
     comment: Optional[str] = None,
 ) -> None:
     """
     Actualiza el expense a 'pagado', guarda ``payment_doc_key`` con el nombre
-    de archivo UUID en la raíz del bucket ``payments`` (sin ruta de carpeta) y
-    registra un log.
+    de archivo UUID en la raíz del bucket ``payments`` (sin ruta de carpeta),
+    establece ``payment_date`` y registra un log.
 
     """
     if not (expense_id and actor_id and (payment_doc_key or "").strip()):
@@ -226,11 +233,15 @@ def mark_expense_as_paid(
 
     sb = get_client()
     sb.schema("public").table("expenses").update(
-        {"status": "pagado", "payment_doc_key": payment_doc_key.strip(), "paid_by": actor_id}
+        {
+            "status": "pagado",
+            "payment_doc_key": payment_doc_key.strip(),
+            "paid_by": actor_id,
+            "payment_date": payment_date,
+        }
     ).eq("id", expense_id).execute()
 
-    msg = f"status -> pagado; key={payment_doc_key}"
-    if comment:
-        msg += f"; {comment}"
-    create_expense_log(expense_id, actor_id, action="update", message=msg)
+    create_expense_log(expense_id, actor_id, message="Solicitud pagada")
+    if comment and comment.strip():
+        add_expense_comment(expense_id, actor_id, comment.strip())
 

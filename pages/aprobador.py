@@ -39,7 +39,7 @@ ESTADOS = ["solicitado", "aprobado", "rechazado", "pagado"]
 tab1, tab2, tab3 = st.tabs(["Solicitudes", "Detalles y actualizar", "Historial"])
 
 with tab1:
-    st.subheader("Solicitudes")
+    st.write("**Solicitudes**")
 
     # Pull once for metrics (all statuses) and reuse
     all_rows = list_expenses_for_status(status=None)
@@ -58,10 +58,10 @@ with tab1:
     # Filter by status
     selected_status = st.selectbox(
         "Filtrar por estado",
-        options=["(todos)"] + ESTADOS,
+        options=ESTADOS,
         index=0,
     )
-    rows = all_rows if selected_status == "(todos)" else [r for r in all_rows if r["status"] == selected_status]
+    rows = [r for r in all_rows if r["status"] == selected_status]
 
     if not rows:
         st.caption("No hay solicitudes para este filtro.")
@@ -92,7 +92,7 @@ with tab1:
 # Tab 2 — Detalles y actualizar
 # ---------------------------------------------------
 with tab2:
-    st.subheader("Detalles y actualizar")
+    st.write("**Detalles y actualizar**")
 
     # Horizontal radio to choose status to select from
     estado_sel = st.radio(
@@ -151,7 +151,7 @@ with tab2:
 
 
         st.divider()
-        st.subheader("Historial (logs)")
+        st.write("**Historial (logs)**")
         logs = list_expense_logs(expense_id)
         if not logs:
             st.caption("Sin historial.")
@@ -160,16 +160,15 @@ with tab2:
                 [
                     {
                         "Fecha": _fmt_dt(lg["created_at"]),
-                        "Acción": lg["action"],
                         "Actor": lg.get("actor_email", ""),
-                        "Detalles": lg.get("details_text", ""),
+                        "Mensaje": lg.get("message", ""),
                     }
                     for lg in logs
                 ]
             )
             st.dataframe(log_df, use_container_width=True, hide_index=True)
 
-        st.subheader("Comentarios")
+        st.write("**Comentarios**")
         comments = list_expense_comments(expense_id)
         if not comments:
             st.caption("No hay comentarios.")
@@ -179,7 +178,7 @@ with tab2:
                     {
                         "Fecha": _fmt_dt(c["created_at"]),
                         "Autor": c.get("actor_email", ""),
-                        "Comentario": c["text"],
+                        "Comentario": c["message"],
                     }
                     for c in comments
                 ]
@@ -188,7 +187,7 @@ with tab2:
 
     # ---- Right: update status + add comment
     with right:
-        st.subheader("Actualizar estado / agregar comentario")
+        st.write("**Actualizar estado / agregar comentario**")
         # Aprobador puede dejar 'solicitado', 'aprobado' o 'rechazado'
         estados_actualizables = ["solicitado", "aprobado", "rechazado"]
         new_status = st.selectbox(
@@ -215,7 +214,7 @@ with tab2:
 # Tab 3 — Historial
 # ---------------------------------------------------
 with tab3:
-    st.subheader("Historial")
+    st.write("**Historial**")
 
     modo = st.radio(
         "Ver por:",
@@ -310,15 +309,15 @@ with tab3:
         logs = list_expense_logs(eid)
         if logs:
             log_df = pd.DataFrame(
-                [{"Fecha": _fmt_dt(l["created_at"]), "Acción": l["action"], "Actor": l.get("actor_email",""), "Detalles": l.get("details_text", "")} for l in logs]
+                [{"Fecha": _fmt_dt(l["created_at"]), "Actor": l.get("actor_email",""), "Mensaje": l.get("message","")} for l in logs]
             )
-            st.subheader("Historial (logs)")
+            st.write("**Historial (logs)**")
             st.dataframe(log_df, use_container_width=True, hide_index=True)
 
         comments = list_expense_comments(eid)
         if comments:
             com_df = pd.DataFrame(
-                [{"Fecha": _fmt_dt(c["created_at"]), "Autor": c.get("actor_email",""), "Comentario": c["text"]} for c in comments]
+                [{"Fecha": _fmt_dt(c["created_at"]), "Autor": c.get("actor_email",""), "Comentario": c["message"]} for c in comments]
             )
-            st.subheader("Comentarios")
+            st.write("**Comentarios**")
             st.dataframe(com_df, use_container_width=True, hide_index=True)

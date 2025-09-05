@@ -5,6 +5,7 @@ import pandas as pd
 import streamlit as st
 import uuid
 from pathlib import Path
+from datetime import date
 
 from f_auth import require_pagador, current_user, get_client
 from f_read import (
@@ -52,7 +53,7 @@ tab1, tab2, tab3 = st.tabs(["Solicitudes", "Detalles y marcar pagado", "Historia
 # Tab 1 — Solicitudes
 # ---------------------------------------------------
 with tab1:
-    st.subheader("Solicitudes")
+    st.write("**Solicitudes**")
 
     all_rows = list_expenses_for_status(status=None)
 
@@ -99,7 +100,7 @@ with tab1:
 # Tab 2 — Detalles y marcar pagado
 # ---------------------------------------------------
 with tab2:
-    st.subheader("Detalles y marcar pagado")
+    st.write("**Detalles y marcar pagado**")
 
     # Elegir estado desde el cual seleccionar (tiene sentido 'aprobado' y 'pagado')
     estado_sel = st.radio(
@@ -152,21 +153,21 @@ with tab2:
 
 
         st.divider()
-        st.subheader("Historial (logs)")
+        st.write("**Historial (logs)**")
         logs = list_expense_logs(expense_id)
         if logs:
             log_df = pd.DataFrame(
-                [{"Fecha": _fmt_dt(l["created_at"]), "Acción": l["action"], "Actor": l.get("actor_email",""), "Detalles": l.get("details_text", "")} for l in logs]
+                [{"Fecha": _fmt_dt(l["created_at"]), "Actor": l.get("actor_email",""), "Mensaje": l.get("message", "")} for l in logs]
             )
             st.dataframe(log_df, use_container_width=True, hide_index=True)
         else:
             st.caption("Sin historial.")
 
-        st.subheader("Comentarios")
+        st.write("**Comentarios**")
         comments = list_expense_comments(expense_id)
         if comments:
             com_df = pd.DataFrame(
-                [{"Fecha": _fmt_dt(c["created_at"]), "Autor": c.get("actor_email",""), "Comentario": c["text"]} for c in comments]
+                [{"Fecha": _fmt_dt(c["created_at"]), "Autor": c.get("actor_email",""), "Comentario": c["message"]} for c in comments]
             )
             st.dataframe(com_df, use_container_width=True, hide_index=True)
         else:
@@ -174,7 +175,7 @@ with tab2:
 
     # ---- Derecha: marcar pagado / comentario
     with right:
-        st.subheader("Actualizar estado / marcar pagado")
+        st.write("**Actualizar estado / marcar pagado**")
 
         estados_pagador = ["aprobado", "pagado"]  # Pagador solo debería usar estos
         new_status = st.selectbox(
@@ -182,6 +183,12 @@ with tab2:
             options=estados_pagador,
             index=estados_pagador.index(exp["status"]) if exp["status"] in estados_pagador else 0,
         )
+
+        payment_date = date.today()
+        if new_status == "pagado":
+            hoy = st.checkbox("fecha de pago hoy", value=True)
+            if not hoy:
+                payment_date = st.date_input("Fecha de pago", value=date.today())
 
         pay_file = st.file_uploader(
             "Comprobante de pago (obligatorio si marcas 'Pagado')",
@@ -218,6 +225,7 @@ with tab2:
                         expense_id=expense_id,
                         actor_id=user_id,
                         payment_doc_key=file_id,
+                        payment_date=payment_date.strftime("%Y-%m-%d"),
                         comment=(comment or "").strip() or None,
                     )
                     st.success("Solicitud marcada como pagada.")
@@ -240,7 +248,7 @@ with tab2:
 # Tab 3 — Historial
 # ---------------------------------------------------
 with tab3:
-    st.subheader("Historial")
+    st.write("**Historial**")
 
     modo = st.radio(
         "Ver por:",
@@ -327,15 +335,15 @@ with tab3:
         logs = list_expense_logs(eid)
         if logs:
             log_df = pd.DataFrame(
-                [{"Fecha": _fmt_dt(l["created_at"]), "Acción": l["action"], "Actor": l.get("actor_email",""), "Detalles": l.get("details_text", "")} for l in logs]
+                [{"Fecha": _fmt_dt(l["created_at"]), "Actor": l.get("actor_email",""), "Mensaje": l.get("message", "")} for l in logs]
             )
-            st.subheader("Historial (logs)")
+            st.write("**Historial (logs)**")
             st.dataframe(log_df, use_container_width=True, hide_index=True)
 
         comments = list_expense_comments(eid)
         if comments:
             com_df = pd.DataFrame(
-                [{"Fecha": _fmt_dt(c["created_at"]), "Autor": c.get("actor_email",""), "Comentario": c["text"]} for c in comments]
+                [{"Fecha": _fmt_dt(c["created_at"]), "Autor": c.get("actor_email",""), "Comentario": c["message"]} for c in comments]
             )
-            st.subheader("Comentarios")
+            st.write("**Comentarios**")
             st.dataframe(com_df, use_container_width=True, hide_index=True)

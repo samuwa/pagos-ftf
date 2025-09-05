@@ -154,6 +154,7 @@ with tab_mias:
             except Exception:
                 return s
 
+
         df = pd.DataFrame(
             [
                 {
@@ -163,6 +164,7 @@ with tab_mias:
                     "Categoría": r["category"],
                     "Descripción": r.get("description") or "",
                     "Estado": r["status"],
+
                 }
                 for r in rows
             ]

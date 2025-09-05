@@ -14,7 +14,7 @@ from f_read import (
     list_expense_logs,
     list_expense_comments,
     list_suppliers,
-    list_categories_from_expenses,
+    list_categories,
     list_requesters_for_approver,      # reutilizamos
     list_expenses_by_supplier_id,
     list_expenses_by_category,
@@ -266,7 +266,7 @@ with tab3:
         rows = list_expenses_by_supplier_id(sup_map[sel_sup_name])
 
     elif modo == "Categorías":
-        cats = list_categories_from_expenses()
+        cats = list_categories()
         if not cats:
             st.caption("No hay categorías.")
             st.stop()

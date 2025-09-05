@@ -86,13 +86,13 @@ def list_app_users() -> List[str]:
 
 @st.cache_data(ttl=30, show_spinner=False)
 def list_suppliers() -> List[Dict[str, Any]]:
-    """Return suppliers as [{'id','name','created_at'}, ...]."""
+    """Return suppliers as [{'id','name','category'}, ...]."""
     sb = get_client()
     res = (
         sb.schema("public")
         .table("suppliers")
-        .select("id,name,created_at")
-        .order("created_at", desc=True)
+        .select("id,name,category")
+        .order("name")
         .execute()
     )
     return res.data or []
@@ -346,7 +346,18 @@ def list_expenses_by_supplier_id(supplier_id: str) -> List[Dict[str, Any]]:
     )
     base = res2.data or []
     # get name
-    sups = {s["id"]: s["name"] for s in (get_client().schema("public").table("suppliers").select("id,name").execute().data or [])}
+    sups = {
+        s["id"]: s["name"]
+        for s in (
+            get_client()
+            .schema("public")
+            .table("suppliers")
+            .select("id,name,category")
+            .execute()
+            .data
+            or []
+        )
+    }
     emails = _emails_by_ids({r["requested_by"] for r in base})
     for r in base:
         r["supplier_name"] = sups.get(supplier_id, "")

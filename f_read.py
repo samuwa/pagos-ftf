@@ -97,6 +97,13 @@ def list_suppliers() -> List[Dict[str, Any]]:
     )
     return res.data or []
 
+
+@st.cache_data(ttl=60, show_spinner=False)
+def list_categories() -> List[str]:
+    sb = get_client()
+    res = sb.schema("public").table("categories").select("name").order("name").execute()
+    return [r["name"] for r in (res.data or [])]
+
 def get_user_id_by_email(email: str) -> Optional[str]:
     """Get public.users.id by email (case-insensitive)."""
     sb = get_client()
@@ -306,13 +313,6 @@ def get_expense_by_id_for_approver(expense_id: str) -> Optional[Dict[str, Any]]:
         return None
     row["requested_by_email"] = _emails_by_ids([row["requested_by"]]).get(row["requested_by"], "")
     return row
-
-@st.cache_data(ttl=60, show_spinner=False)
-def list_categories_from_expenses() -> List[str]:
-    sb = get_client()
-    res = sb.schema("public").table("expenses").select("category").execute()
-    vals = sorted({(r["category"] or "").strip() for r in (res.data or []) if r.get("category")})
-    return vals
 
 @st.cache_data(ttl=30, show_spinner=False)
 def list_requesters_for_approver() -> List[Dict[str, Any]]:

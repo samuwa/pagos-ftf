@@ -17,15 +17,13 @@ from f_read import (
     get_my_expense,
     list_expense_comments,
     list_expense_logs,
+    list_categories,
 )
 from f_cud import create_expense, add_expense_comment
 
 # ===== Config =====
 st.set_page_config(page_title="Solicitudes", page_icon="🧾", layout="wide")
 require_solicitante()
-
-# Categorías en código
-CATEGORIAS = ["Viajes", "Comidas", "Software/SaaS", "Oficina", "Servicios", "Otros"]
 
 st.write("**Solicitudes**")
 
@@ -53,7 +51,12 @@ with tab_nueva:
     with col_a:
         amount = st.number_input("Monto *", min_value=0.00, step=0.01, format="%.2f")
     with col_b:
-        categoria = st.selectbox("Categoría *", options=CATEGORIAS)
+        cats = list_categories()
+        if not cats:
+            st.info("No hay categorías aún. Pide al administrador que agregue categorías.")
+        categoria = st.selectbox(
+            "Categoría *", options=cats if cats else [""], disabled=not cats
+        )
 
     descripcion = st.text_input("Descripción breve *", placeholder="Ej. Suscripción anual de software...")
 
@@ -75,12 +78,12 @@ with tab_nueva:
             st.caption("No se encontraron solicitudes similares recientes.")
 
     # Enviar
-    if st.button("Enviar solicitud", type="primary", use_container_width=False):
+    if st.button("Enviar solicitud", type="primary", use_container_width=False, disabled=not cats):
         if not supplier_id:
             st.error("Selecciona un proveedor.")
         elif not amount or amount <= 0:
             st.error("Ingresa un monto válido mayor a cero.")
-        elif not categoria or categoria not in CATEGORIAS:
+        elif not categoria:
             st.error("Selecciona una categoría.")
         elif not file:
             st.error("Adjunta el documento de respaldo.")

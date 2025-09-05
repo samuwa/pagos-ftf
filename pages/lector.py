@@ -8,7 +8,7 @@ import datetime as dt
 from f_auth import require_lector, current_user
 from f_read import (
     list_suppliers,
-    list_categories_from_expenses,
+    list_categories,
     list_requesters_for_approver,   # reutilizamos para obtener solicitantes
     list_approvers_for_viewer,      # NUEVO helper abajo
     list_paid_expenses_enriched,    # NUEVO helper abajo
@@ -61,7 +61,7 @@ with col_dates:
 # Opciones de filtros por dimensión
 suppliers = list_suppliers()
 supplier_names = [s["name"] for s in suppliers]
-cats = list_categories_from_expenses()
+cats = list_categories()
 reqs = list_requesters_for_approver()        # [{id,email}]
 aprs = list_approvers_for_viewer()           # [{id,email}]
 

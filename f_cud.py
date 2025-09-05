@@ -66,6 +66,14 @@ def create_supplier(name: str) -> None:
         raise ValueError("Nombre inválido.")
     sb.schema("public").table("suppliers").insert({"name": nm}).execute()
 
+
+def create_category(name: str) -> None:
+    nm = (name or "").strip()
+    if not nm:
+        raise ValueError("Nombre de categoría inválido.")
+    sb = get_client()
+    sb.schema("public").table("categories").insert({"name": nm}).execute()
+
 def assign_role(user_id: str, role: str) -> None:
     """
     Grant a single role (Spanish enum string) to the user.

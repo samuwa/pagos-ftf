@@ -4,10 +4,18 @@
 import os
 import time
 import streamlit as st
+import pandas as pd
 from supabase import create_client
 from f_auth import require_administrador, current_user, get_client
-from f_read import get_all_users, list_suppliers
-from f_cud import assign_role, remove_role, add_app_user, create_supplier, update_user_password
+from f_read import get_all_users, list_suppliers, list_categories
+from f_cud import (
+    assign_role,
+    remove_role,
+    add_app_user,
+    create_supplier,
+    update_user_password,
+    create_category,
+)
 
 st.set_page_config(page_icon="🛡️", layout="wide")
 require_administrador()
@@ -32,7 +40,13 @@ def get_admin_client():
 
 ADMIN_CLIENT = get_admin_client()
 
-tab_crear, tab_editar, tab_pass, tab_prov = st.tabs(["Crear usuario", "Editar usuario", "Actualizar contraseña", "Proveedores"])
+tab_crear, tab_editar, tab_pass, tab_prov, tab_cats = st.tabs([
+    "Crear usuario",
+    "Editar usuario",
+    "Actualizar contraseña",
+    "Proveedores",
+    "Categorías",
+])
 
 # =======================
 # Tab 1: Crear usuario
@@ -236,8 +250,42 @@ with tab_prov:
         else:
             # Vista solo lectura
             # (Puedes formatear created_at a tu gusto; aquí lo mostramos tal cual)
-            import pandas as pd
             df = pd.DataFrame(suppliers)[["name", "created_at"]]
             df["created_at"] = pd.to_datetime(df["created_at"]).dt.date
             df.columns = ["Nombre","Creado"]
             st.dataframe(df, use_container_width=True, hide_index=True)
+
+# =======================
+# Tab 5: Categorías
+# =======================
+with tab_cats:
+    st.subheader("Categorías")
+
+    cats = list_categories()
+    if cats:
+        st.dataframe(pd.DataFrame({"Categoría": cats}), use_container_width=True, hide_index=True)
+    else:
+        st.caption("Aún no hay categorías.")
+
+    st.markdown("### Agregar categoría")
+    with st.form("form_add_category", clear_on_submit=True):
+        cat_name = st.text_input("Nombre de categoría *", placeholder="Ej. Software").strip()
+        submitted = st.form_submit_button("Agregar")
+        if submitted:
+            if not cat_name:
+                st.error("El nombre es obligatorio.")
+            else:
+                try:
+                    create_category(cat_name)
+                    try:
+                        list_categories.clear()
+                    except Exception:
+                        pass
+                    st.success("Categoría agregada.")
+                    st.rerun()
+                except Exception as e:
+                    msg = str(e)
+                    if "duplicate" in msg.lower() or "unique" in msg.lower():
+                        st.warning("Esa categoría ya existe.")
+                    else:
+                        st.error(f"No se pudo agregar: {e}")

@@ -154,6 +154,12 @@ with tab_mias:
             except Exception:
                 return s
 
+        def _fmt_fecha(s: str) -> str:
+            try:
+                return pd.to_datetime(s).strftime("%Y-%m-%d")
+            except Exception:
+                return s
+
         df = pd.DataFrame(
             [
                 {
@@ -163,6 +169,7 @@ with tab_mias:
                     "Categoría": r["category"],
                     "Descripción": r.get("description") or "",
                     "Estado": r["status"],
+
                 }
                 for r in rows
             ]

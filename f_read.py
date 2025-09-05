@@ -222,14 +222,12 @@ def get_my_expense(user_id: str, expense_id: str) -> Optional[Dict[str, Any]]:
     return res.data
 
 def list_expense_logs(expense_id: str) -> List[Dict[str, Any]]:
-    """
-    Lista todos los logs de una solicitud y agrega actor_email.
-    """
+    """Lista los logs de una solicitud y agrega ``actor_email``."""
     sb = get_client()
     res = (
         sb.schema("public")
         .table("expense_logs")
-        .select("actor_id,action,message,created_at")
+        .select("actor_id,message,created_at")
         .eq("expense_id", expense_id)
         .order("created_at", desc=True)
         .execute()
@@ -238,28 +236,27 @@ def list_expense_logs(expense_id: str) -> List[Dict[str, Any]]:
     emails = _emails_by_ids({r["actor_id"] for r in rows})
     for r in rows:
         r["actor_email"] = emails.get(r["actor_id"])
-        r["details_text"] = r.get("message", "")
     return rows
 
 def list_expense_comments(expense_id: str) -> List[Dict[str, Any]]:
-    """Devuelve comentarios [{created_at, text, actor_email}, ...]"""
+    """Devuelve comentarios [{created_at, message, actor_email}, ...]"""
     sb = get_client()
     res = (
         sb.schema("public")
         .table("expense_comments")
-        .select("author_id,text,created_at")
+        .select("created_by,message,created_at")
         .eq("expense_id", expense_id)
         .order("created_at", desc=True)
         .execute()
     )
     rows = res.data or []
-    emails = _emails_by_ids({r["author_id"] for r in rows})
+    emails = _emails_by_ids({r["created_by"] for r in rows})
     out = []
     for r in rows:
         out.append({
             "created_at": r["created_at"],
-            "text": r.get("text", ""),
-            "actor_email": emails.get(r["author_id"]),
+            "message": r.get("message", ""),
+            "actor_email": emails.get(r["created_by"]),
         })
     return out
 
@@ -477,17 +474,16 @@ def list_approvers_for_viewer() -> List[Dict[str, Any]]:
 
 @st.cache_data(ttl=30, show_spinner=False)
 def _paid_at_map_for_expenses(expense_ids: List[str]) -> Dict[str, str]:
-    """Devuelve expense_id -> paid_at usando ``expense_logs`` con mensaje de estado pagado."""
+    """Devuelve expense_id -> paid_at usando ``expense_logs`` con mensaje de pago."""
     if not expense_ids:
         return {}
     sb = get_client()
     res = (
         sb.schema("public")
         .table("expense_logs")
-        .select("expense_id,created_at,action,message")
+        .select("expense_id,created_at,message")
         .in_("expense_id", expense_ids)
-        .eq("action", "update")
-        .ilike("message", "%status -> pagado%")
+        .ilike("message", "%solicitud pagada%")
         .order("created_at", desc=True)
         .execute()
     )

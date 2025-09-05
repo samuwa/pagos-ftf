@@ -160,9 +160,8 @@ with tab2:
                 [
                     {
                         "Fecha": _fmt_dt(lg["created_at"]),
-                        "Acción": lg["action"],
                         "Actor": lg.get("actor_email", ""),
-                        "Detalles": lg.get("details_text", ""),
+                        "Mensaje": lg.get("message", ""),
                     }
                     for lg in logs
                 ]
@@ -179,7 +178,7 @@ with tab2:
                     {
                         "Fecha": _fmt_dt(c["created_at"]),
                         "Autor": c.get("actor_email", ""),
-                        "Comentario": c["text"],
+                        "Comentario": c["message"],
                     }
                     for c in comments
                 ]
@@ -310,7 +309,7 @@ with tab3:
         logs = list_expense_logs(eid)
         if logs:
             log_df = pd.DataFrame(
-                [{"Fecha": _fmt_dt(l["created_at"]), "Acción": l["action"], "Actor": l.get("actor_email",""), "Detalles": l.get("details_text", "")} for l in logs]
+                [{"Fecha": _fmt_dt(l["created_at"]), "Actor": l.get("actor_email",""), "Mensaje": l.get("message","")} for l in logs]
             )
             st.subheader("Historial (logs)")
             st.dataframe(log_df, use_container_width=True, hide_index=True)
@@ -318,7 +317,7 @@ with tab3:
         comments = list_expense_comments(eid)
         if comments:
             com_df = pd.DataFrame(
-                [{"Fecha": _fmt_dt(c["created_at"]), "Autor": c.get("actor_email",""), "Comentario": c["text"]} for c in comments]
+                [{"Fecha": _fmt_dt(c["created_at"]), "Autor": c.get("actor_email",""), "Comentario": c["message"]} for c in comments]
             )
             st.subheader("Comentarios")
             st.dataframe(com_df, use_container_width=True, hide_index=True)

@@ -153,20 +153,26 @@ with tab_mias:
             url = signed_url_for_receipt(key or "", expires=300)
             return f"[Documento]({url})" if url else ""
 
+        def _fmt_fecha(s: str) -> str:
+            try:
+                return pd.to_datetime(s).strftime("%Y-%m-%d")
+            except Exception:
+                return s
+
         df = pd.DataFrame(
-    [
-        {
-            "Fecha": r["created_at"],
-            "Proveedor": r["supplier_name"],
-            "Monto": f"{r['amount']:.2f}",
-            "Categoría": r["category"],
-            "Descripción": r.get("description") or "",
-            "Estado": r["status"],
-            "Recibo": _signed_link(r.get("supporting_doc_key")),
-        }
-        for r in rows
-    ]
-)
+            [
+                {
+                    "Fecha Creado": _fmt_fecha(r["created_at"]),
+                    "Proveedor": r["supplier_name"],
+                    "Monto": f"{r['amount']:.2f}",
+                    "Categoría": r["category"],
+                    "Descripción": r.get("description") or "",
+                    "Estado": r["status"],
+                    "Recibo": _signed_link(r.get("supporting_doc_key")),
+                }
+                for r in rows
+            ]
+        )
         st.dataframe(df, use_container_width=True, hide_index=True)
 
 # ==========================
@@ -200,7 +206,7 @@ with tab_detalle:
         f"**Categoría:** {exp['category']}  \n"
         f"**Descripción:** {exp.get('description','')}  \n"
         f"**Estado:** {exp['status']}  \n"
-        f"**Fecha:** {exp['created_at']}"
+        f"**Fecha Creado:** {pd.to_datetime(exp['created_at']).strftime('%Y-%m-%d')}"
 )
 
     # Enlaces rápidos a archivos
@@ -258,7 +264,7 @@ with tab_detalle:
                 {
                     "Fecha": _fmt_dt(c["created_at"]),
                     "Autor": c.get("actor_email", ""),
-                    "Comentario": c["text"],
+                    "Comentario": c["message"],
                 }
                 for c in comentarios
             ]
@@ -277,9 +283,8 @@ with tab_detalle:
             [
                 {
                     "Fecha": _fmt_dt(lg["created_at"]),
-                    "Acción": lg["action"],
                     "Actor": lg.get("actor_email", ""),
-                    "Detalles": lg.get("details_text", ""),
+                    "Mensaje": lg.get("message", ""),
                 }
                 for lg in logs
             ]

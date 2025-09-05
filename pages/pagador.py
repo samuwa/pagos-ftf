@@ -156,7 +156,7 @@ with tab2:
         logs = list_expense_logs(expense_id)
         if logs:
             log_df = pd.DataFrame(
-                [{"Fecha": _fmt_dt(l["created_at"]), "Acción": l["action"], "Actor": l.get("actor_email",""), "Detalles": l.get("details_text", "")} for l in logs]
+                [{"Fecha": _fmt_dt(l["created_at"]), "Actor": l.get("actor_email",""), "Mensaje": l.get("message", "")} for l in logs]
             )
             st.dataframe(log_df, use_container_width=True, hide_index=True)
         else:
@@ -166,7 +166,7 @@ with tab2:
         comments = list_expense_comments(expense_id)
         if comments:
             com_df = pd.DataFrame(
-                [{"Fecha": _fmt_dt(c["created_at"]), "Autor": c.get("actor_email",""), "Comentario": c["text"]} for c in comments]
+                [{"Fecha": _fmt_dt(c["created_at"]), "Autor": c.get("actor_email",""), "Comentario": c["message"]} for c in comments]
             )
             st.dataframe(com_df, use_container_width=True, hide_index=True)
         else:
@@ -327,7 +327,7 @@ with tab3:
         logs = list_expense_logs(eid)
         if logs:
             log_df = pd.DataFrame(
-                [{"Fecha": _fmt_dt(l["created_at"]), "Acción": l["action"], "Actor": l.get("actor_email",""), "Detalles": l.get("details_text", "")} for l in logs]
+                [{"Fecha": _fmt_dt(l["created_at"]), "Actor": l.get("actor_email",""), "Mensaje": l.get("message", "")} for l in logs]
             )
             st.subheader("Historial (logs)")
             st.dataframe(log_df, use_container_width=True, hide_index=True)
@@ -335,7 +335,7 @@ with tab3:
         comments = list_expense_comments(eid)
         if comments:
             com_df = pd.DataFrame(
-                [{"Fecha": _fmt_dt(c["created_at"]), "Autor": c.get("actor_email",""), "Comentario": c["text"]} for c in comments]
+                [{"Fecha": _fmt_dt(c["created_at"]), "Autor": c.get("actor_email",""), "Comentario": c["message"]} for c in comments]
             )
             st.subheader("Comentarios")
             st.dataframe(com_df, use_container_width=True, hide_index=True)

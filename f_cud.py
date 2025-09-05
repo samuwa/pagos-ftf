@@ -219,12 +219,13 @@ def mark_expense_as_paid(
     expense_id: str,
     actor_id: str,
     payment_doc_key: str,
+    payment_date: str,
     comment: Optional[str] = None,
 ) -> None:
     """
     Actualiza el expense a 'pagado', guarda ``payment_doc_key`` con el nombre
-    de archivo UUID en la raíz del bucket ``payments`` (sin ruta de carpeta) y
-    registra un log.
+    de archivo UUID en la raíz del bucket ``payments`` (sin ruta de carpeta),
+    establece ``payment_date`` y registra un log.
 
     """
     if not (expense_id and actor_id and (payment_doc_key or "").strip()):
@@ -232,7 +233,12 @@ def mark_expense_as_paid(
 
     sb = get_client()
     sb.schema("public").table("expenses").update(
-        {"status": "pagado", "payment_doc_key": payment_doc_key.strip(), "paid_by": actor_id}
+        {
+            "status": "pagado",
+            "payment_doc_key": payment_doc_key.strip(),
+            "paid_by": actor_id,
+            "payment_date": payment_date,
+        }
     ).eq("id", expense_id).execute()
 
     create_expense_log(expense_id, actor_id, message="Solicitud pagada")

@@ -5,6 +5,7 @@ import pandas as pd
 import streamlit as st
 import uuid
 from pathlib import Path
+from datetime import date
 
 from f_auth import require_pagador, current_user, get_client
 from f_read import (
@@ -183,6 +184,12 @@ with tab2:
             index=estados_pagador.index(exp["status"]) if exp["status"] in estados_pagador else 0,
         )
 
+        payment_date = date.today()
+        if new_status == "pagado":
+            hoy = st.checkbox("fecha de pago hoy", value=True)
+            if not hoy:
+                payment_date = st.date_input("Fecha de pago", value=date.today())
+
         pay_file = st.file_uploader(
             "Comprobante de pago (obligatorio si marcas 'Pagado')",
             type=["pdf", "png", "jpg", "jpeg", "webp"],
@@ -218,6 +225,7 @@ with tab2:
                         expense_id=expense_id,
                         actor_id=user_id,
                         payment_doc_key=file_id,
+                        payment_date=payment_date.strftime("%Y-%m-%d"),
                         comment=(comment or "").strip() or None,
                     )
                     st.success("Solicitud marcada como pagada.")

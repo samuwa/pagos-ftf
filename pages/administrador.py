@@ -217,43 +217,41 @@ with tab_pass:
 # Tab 4: Proveedores
 # =======================
 with tab_prov:
+    st.subheader("Proveedores")
 
-    col1, col2 = st.columns(2)
+    sups = list_suppliers()
+    if sups:
+        df = pd.DataFrame(
+            [{"Proveedor": s["name"], "Categoría": s.get("category", "")} for s in sups]
+        )
+        st.dataframe(df, use_container_width=True, hide_index=True)
+    else:
+        st.caption("Aún no hay proveedores.")
 
-    with col1:
-        st.write("**Crear proveedor**")
+    st.markdown("### Agregar proveedor")
+    cats = list_categories()
+    if not cats:
+        st.info("No hay categorías. Primero agrega categorías en la pestaña 'Categorías'.")
 
-        with st.form("crear_proveedor_form", clear_on_submit=True):
-            sup_name = st.text_input("Nombre del proveedor *", placeholder="Ej. 'Acme S.A.'")
-            btn_create = st.form_submit_button("Crear")
-            if btn_create:
-                if not sup_name or not sup_name.strip():
-                    st.error("Ingresa un nombre válido.")
+    with st.form("form_add_supplier", clear_on_submit=True):
+        nombre = st.text_input("Nombre del proveedor *").strip()
+        categoria = st.selectbox("Categoría *", cats, disabled=not bool(cats))
+        submitted = st.form_submit_button("Crear", disabled=not bool(cats))
+        if submitted:
+            try:
+                create_supplier(nombre, categoria)
+                try:
+                    list_suppliers.clear()
+                except Exception:
+                    pass
+                st.success("Proveedor creado.")
+                st.rerun()
+            except Exception as e:
+                msg = str(e).lower()
+                if "duplicate" in msg or "unique" in msg:
+                    st.warning("Ese proveedor ya existe.")
                 else:
-                    try:
-                        create_supplier(sup_name.strip())
-                        st.success(f"Proveedor creado: {sup_name.strip()}")
-                        # limpiar cache de lista
-                        try:
-                            list_suppliers.clear()
-                        except Exception:
-                            pass
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"No se pudo crear el proveedor: {e}")
-
-    with col2:
-        st.write("**Listado de proveedores**")
-        suppliers = list_suppliers()
-        if not suppliers:
-            st.caption("Aún no hay proveedores.")
-        else:
-            # Vista solo lectura
-            # (Puedes formatear created_at a tu gusto; aquí lo mostramos tal cual)
-            df = pd.DataFrame(suppliers)[["name", "created_at"]]
-            df["created_at"] = pd.to_datetime(df["created_at"]).dt.date
-            df.columns = ["Nombre","Creado"]
-            st.dataframe(df, use_container_width=True, hide_index=True)
+                    st.error(f"No se pudo crear el proveedor: {e}")
 
 # =======================
 # Tab 5: Categorías

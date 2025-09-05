@@ -59,12 +59,25 @@ def set_user_roles_by_email(email: str, roles: List[str]) -> None:
 
 # ------------- Suppliers -------------
 
-def create_supplier(name: str) -> None:
-    sb = get_client()
+def create_supplier(name: str, category: str) -> None:
     nm = (name or "").strip()
-    if not nm:
-        raise ValueError("Nombre inválido.")
-    sb.schema("public").table("suppliers").insert({"name": nm}).execute()
+    cat = (category or "").strip()
+    if not nm or not cat:
+        raise ValueError("Nombre y categoría son obligatorios.")
+    sb = get_client()
+    chk = (
+        sb.schema("public")
+        .table("categories")
+        .select("name")
+        .eq("name", cat)
+        .single()
+        .execute()
+    )
+    if not chk.data:
+        raise ValueError(
+            "La categoría no existe. Agrega la categoría primero en Admin > Categorías."
+        )
+    sb.schema("public").table("suppliers").insert({"name": nm, "category": cat}).execute()
 
 
 def create_category(name: str) -> None:

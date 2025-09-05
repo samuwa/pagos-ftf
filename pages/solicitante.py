@@ -40,7 +40,7 @@ tab_nueva, tab_mias, tab_detalle = st.tabs(["Nueva solicitud", "Mis solicitudes"
 # Tab 1: Nueva solicitud
 # ==========================
 with tab_nueva:
-    st.subheader("Crear nueva solicitud")
+    st.write("**Crear nueva solicitud**")
 
     suppliers = list_suppliers()
     if not suppliers:
@@ -120,7 +120,7 @@ with tab_nueva:
 # Tab 2: Mis solicitudes
 # ==========================
 with tab_mias:
-    st.subheader("Mis solicitudes")
+    st.write("**Mis solicitudes**")
 
     # Trae todo para métricas
     rows_all = list_my_expenses(user_id, status=None)
@@ -139,19 +139,20 @@ with tab_mias:
 
     estado_filtro = st.selectbox(
         "Filtrar por estado",
-        options= estados,
+        options=estados,
         index=0,
     )
-    estado = None if estado_filtro == "(todos)" else estado_filtro
 
-    rows = rows_all if estado is None else [r for r in rows_all if r["status"] == estado]
+    rows = [r for r in rows_all if r["status"] == estado_filtro]
     if not rows:
         st.caption("No tienes solicitudes en este filtro.")
     else:
 
-        def _signed_link(key: str) -> str:
-            url = signed_url_for_receipt(key or "", expires=300)
-            return f"[Documento]({url})" if url else ""
+        def _fmt_fecha(s: str) -> str:
+            try:
+                return pd.to_datetime(s).strftime("%Y-%m-%d")
+            except Exception:
+                return s
 
         def _fmt_fecha(s: str) -> str:
             try:
@@ -168,7 +169,7 @@ with tab_mias:
                     "Categoría": r["category"],
                     "Descripción": r.get("description") or "",
                     "Estado": r["status"],
-                    "Recibo": _signed_link(r.get("supporting_doc_key")),
+
                 }
                 for r in rows
             ]
@@ -179,7 +180,7 @@ with tab_mias:
 # Tab 3: Detalles y actualizar
 # ==========================
 with tab_detalle:
-    st.subheader("Detalles y actualización de una solicitud")
+    st.write("**Detalles y actualización de una solicitud**")
 
     mis = list_my_expenses(user_id, status=None)
     if not mis:
@@ -233,7 +234,7 @@ with tab_detalle:
     st.divider()
 
     # Agregar comentario
-    st.subheader("Agregar comentario")
+    st.write("**Agregar comentario**")
     with st.form("form_comentario", clear_on_submit=True):
         txt = st.text_area("Comentario", placeholder="Escribe tu comentario…")
         if st.form_submit_button("Guardar comentario"):
@@ -254,7 +255,7 @@ with tab_detalle:
             return s
 
     # Comentarios (solo los de tipo 'comment')
-    st.subheader("Comentarios")
+    st.write("**Comentarios**")
     comentarios = list_expense_comments(sel_id)
     if not comentarios:
         st.caption("No hay comentarios.")
@@ -274,7 +275,7 @@ with tab_detalle:
     st.divider()
 
     # Historial completo (logs)
-    st.subheader("Historial de cambios")
+    st.write("**Historial de cambios**")
     logs = list_expense_logs(sel_id)
     if not logs:
         st.caption("No hay historial.")

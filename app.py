@@ -3,7 +3,7 @@ from f_auth import login, current_user, sign_out
 
 st.set_page_config(page_icon="📧", layout="centered")
 
-st.subheader("Pagos • Iniciar sesión")
+st.write("**Pagos • Iniciar sesión**")
 
 user = current_user()
 if user:

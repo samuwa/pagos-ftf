@@ -12,7 +12,7 @@ from f_cud import assign_role, remove_role, add_app_user, create_supplier, updat
 st.set_page_config(page_icon="🛡️", layout="wide")
 require_administrador()
 
-st.subheader("Administración")
+st.write("**Administración**")
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 

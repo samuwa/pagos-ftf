@@ -224,6 +224,11 @@ with tab_mias:
 with tab_detalle:
     st.write("**Detalles y actualización de una solicitud**")
 
+    if st.session_state.get("solic_detalle_reset"):
+        st.session_state.solic_detalle_sel = ""
+        st.session_state.solic_detalle_comment = ""
+        st.session_state.solic_detalle_reset = False
+
     mis = list_my_expenses(user_id, status=None)
     if not mis:
         st.caption("Aún no tienes solicitudes.")
@@ -297,8 +302,7 @@ with tab_detalle:
                 try:
                     add_expense_comment(sel_id, user_id, txt.strip())
                     st.success("Comentario agregado.")
-                    st.session_state.solic_detalle_sel = ""
-                    st.session_state.solic_detalle_comment = ""
+                    st.session_state.solic_detalle_reset = True
                     st.rerun()
                 except Exception as e:
                     st.error(f"No se pudo guardar el comentario: {e}")

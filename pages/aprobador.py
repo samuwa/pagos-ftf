@@ -94,6 +94,11 @@ with tab1:
 with tab2:
     st.write("**Detalles y actualizar**")
 
+    if st.session_state.get("aprobador_reset"):
+        st.session_state.aprobador_sel = ""
+        st.session_state.aprobador_comment = ""
+        st.session_state.aprobador_reset = False
+
     # Horizontal radio to choose status to select from
     estado_sel = st.radio(
         "Elegir estado para seleccionar solicitudes:",
@@ -213,8 +218,7 @@ with tab2:
                     # Cambia estado (y opcionalmente agrega comentario en el log)
                     update_expense_status(expense_id, user_id, new_status, comment or None)
                 st.success("Actualización guardada.")
-                st.session_state.aprobador_sel = ""
-                st.session_state.aprobador_comment = ""
+                st.session_state.aprobador_reset = True
                 st.rerun()
             except Exception as e:
                 st.error(f"No se pudo actualizar: {e}")

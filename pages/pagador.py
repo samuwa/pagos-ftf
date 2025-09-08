@@ -102,6 +102,11 @@ with tab1:
 with tab2:
     st.write("**Detalles y marcar pagado**")
 
+    if st.session_state.get("pagador_reset"):
+        st.session_state.pagador_sel = ""
+        st.session_state.pagador_comment = ""
+        st.session_state.pagador_reset = False
+
     # Elegir estado desde el cual seleccionar (tiene sentido 'aprobado' y 'pagado')
     estado_sel = st.radio(
         "Elegir estado para seleccionar solicitudes:",
@@ -209,8 +214,7 @@ with tab2:
                 if new_status == exp["status"] and (comment or "").strip() and not pay_file:
                     add_expense_comment(expense_id, user_id, comment.strip())
                     st.success("Comentario agregado.")
-                    st.session_state.pagador_sel = ""
-                    st.session_state.pagador_comment = ""
+                    st.session_state.pagador_reset = True
                     st.rerun()
 
                 # Marcar como pagado → requiere archivo
@@ -238,8 +242,7 @@ with tab2:
                         comment=(comment or "").strip() or None,
                     )
                     st.success("Solicitud marcada como pagada.")
-                    st.session_state.pagador_sel = ""
-                    st.session_state.pagador_comment = ""
+                    st.session_state.pagador_reset = True
                     st.rerun()
 
                 # Cambiar de pagado → aprobado (raro) o simplemente de aprobado sin archivo
@@ -249,8 +252,7 @@ with tab2:
                     if (comment or "").strip():
                         add_expense_comment(expense_id, user_id, comment.strip())
                         st.success("Comentario agregado.")
-                        st.session_state.pagador_sel = ""
-                        st.session_state.pagador_comment = ""
+                        st.session_state.pagador_reset = True
                         st.rerun()
                     else:
                         st.info("No hay cambios que guardar.")

@@ -285,6 +285,7 @@ def list_expenses_for_status(status: Optional[str]) -> List[Dict[str, Any]]:
     sb = get_client()
     q = (
         sb.schema("public")
+
         .table("expenses")
         .select(
             "id,supplier_id,amount,category,description,status,created_at,"
@@ -308,11 +309,13 @@ def get_expense_by_id_for_approver(expense_id: str) -> Optional[Dict[str, Any]]:
     sb = get_client()
     res = (
         sb.schema("public")
+
         .table("expenses")
         .select(
             "id,supplier_id,amount,category,description,status,created_at,"
             "supporting_doc_key,payment_doc_key,requested_by,suppliers(name)"
         )
+
         .eq("id", expense_id)
         .single()
         .execute()

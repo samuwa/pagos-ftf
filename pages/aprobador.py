@@ -138,7 +138,7 @@ with tab2:
         st.error("No se encontró la solicitud seleccionada.")
         st.stop()
 
-    left, mid, right = st.columns([2, 2, 1])
+    left, mid, right = st.columns([2, 1, 3])
 
     # ---- Left: details, logs, comments
     with left:
@@ -198,7 +198,7 @@ with tab2:
             st.dataframe(com_df, use_container_width=True, hide_index=True)
 
     # ---- Middle: supplier history
-    with mid:
+    with right:
         st.write("**Historial del proveedor**")
         sup_id = exp.get("supplier_id")
         hist_rows = list_expenses_by_supplier_id(sup_id) if sup_id else []
@@ -221,7 +221,7 @@ with tab2:
             st.caption("Sin historial.")
 
     # ---- Right: update status + add comment
-    with right:
+    with mid:
         st.write("**Actualizar estado / agregar comentario**")
         # Aprobador puede dejar 'solicitado', 'aprobado' o 'rechazado'
         estados_actualizables = ["solicitado", "aprobado", "rechazado"]

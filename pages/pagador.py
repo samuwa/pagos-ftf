@@ -120,7 +120,14 @@ with tab2:
         : r["id"]
         for r in rows
     }
-    sel_label = st.selectbox("Selecciona una solicitud", list(opts.keys()))
+    sel_label = st.selectbox(
+        "Selecciona una solicitud",
+        [""] + list(opts.keys()),
+        index=0,
+        key="pagador_sel",
+    )
+    if not sel_label:
+        st.stop()
     expense_id = opts[sel_label]
 
     exp = get_expense_by_id_for_approver(expense_id)
@@ -194,7 +201,7 @@ with tab2:
             "Comprobante de pago (obligatorio si marcas 'Pagado')",
             type=["pdf", "png", "jpg", "jpeg", "webp"],
         )
-        comment = st.text_area("Comentario (opcional)")
+        comment = st.text_area("Comentario (opcional)", key="pagador_comment")
 
         if st.button("Guardar cambios", type="primary", use_container_width=True):
             try:
@@ -202,6 +209,8 @@ with tab2:
                 if new_status == exp["status"] and (comment or "").strip() and not pay_file:
                     add_expense_comment(expense_id, user_id, comment.strip())
                     st.success("Comentario agregado.")
+                    st.session_state.pagador_sel = ""
+                    st.session_state.pagador_comment = ""
                     st.rerun()
 
                 # Marcar como pagado → requiere archivo
@@ -229,6 +238,8 @@ with tab2:
                         comment=(comment or "").strip() or None,
                     )
                     st.success("Solicitud marcada como pagada.")
+                    st.session_state.pagador_sel = ""
+                    st.session_state.pagador_comment = ""
                     st.rerun()
 
                 # Cambiar de pagado → aprobado (raro) o simplemente de aprobado sin archivo
@@ -238,6 +249,8 @@ with tab2:
                     if (comment or "").strip():
                         add_expense_comment(expense_id, user_id, comment.strip())
                         st.success("Comentario agregado.")
+                        st.session_state.pagador_sel = ""
+                        st.session_state.pagador_comment = ""
                         st.rerun()
                     else:
                         st.info("No hay cambios que guardar.")

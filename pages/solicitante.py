@@ -48,8 +48,6 @@ with tab_nueva:
         st.session_state["descripcion"] = ""
     if "comentario" not in st.session_state:
         st.session_state["comentario"] = ""
-    if "archivo" not in st.session_state:
-        st.session_state["archivo"] = None
 
     suppliers = list_suppliers()
     if not suppliers:
@@ -152,7 +150,7 @@ with tab_nueva:
                 st.session_state.monto = 0.0
                 st.session_state.descripcion = ""
                 st.session_state.comentario = ""
-                st.session_state.archivo = None
+                st.session_state.pop("archivo", None)
                 st.session_state.categoria = ""
 
                 st.rerun()

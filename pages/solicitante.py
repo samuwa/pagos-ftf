@@ -17,7 +17,6 @@ from f_read import (
     get_my_expense,
     list_expense_comments,
     list_expense_logs,
-    list_categories,
 )
 from f_cud import create_expense, add_expense_comment
 
@@ -40,28 +39,60 @@ tab_nueva, tab_mias, tab_detalle = st.tabs(["Nueva solicitud", "Mis solicitudes"
 with tab_nueva:
     st.write("**Crear nueva solicitud**")
 
+    # Estado inicial para widgets, así podemos reiniciarlos tras enviar
+    if "sup_name" not in st.session_state:
+        st.session_state["sup_name"] = ""
+    if "monto" not in st.session_state:
+        st.session_state["monto"] = 0.0
+    if "descripcion" not in st.session_state:
+        st.session_state["descripcion"] = ""
+    if "comentario" not in st.session_state:
+        st.session_state["comentario"] = ""
+    if "archivo" not in st.session_state:
+        st.session_state["archivo"] = None
+
     suppliers = list_suppliers()
     if not suppliers:
         st.info("Aún no hay proveedores. Pide a un administrador que cree al menos uno.")
-    sup_opts = {s["name"]: s["id"] for s in suppliers}
-    sup_name = st.selectbox("Proveedor *", options=list(sup_opts.keys()) if suppliers else [])
-    supplier_id = sup_opts.get(sup_name) if sup_name else None
+    sup_opts = {s["name"]: {"id": s["id"], "category": s.get("category") or ""} for s in suppliers}
+    sup_name = st.selectbox(
+        "Proveedor *", options=[""] + list(sup_opts.keys()), key="sup_name"
+    )
+    sel_sup = sup_opts.get(sup_name) if sup_name else None
+    supplier_id = sel_sup["id"] if sel_sup else None
+    categoria = sel_sup["category"] if sel_sup else ""
 
     col_a, col_b = st.columns([1, 1])
     with col_a:
-        amount = st.number_input("Monto *", min_value=0.00, step=0.01, format="%.2f")
+        amount = st.number_input(
+            "Monto *", min_value=0.00, step=0.01, format="%.2f", key="monto"
+        )
     with col_b:
-        cats = list_categories()
-        if not cats:
-            st.info("No hay categorías aún. Pide al administrador que agregue categorías.")
-        categoria = st.selectbox(
-            "Categoría *", options=cats if cats else [""], disabled=not cats
+        # Categoría fija, tomada del proveedor
+        st.session_state["categoria"] = categoria
+        st.selectbox(
+            "Categoría *",
+            options=[categoria] if categoria else [""],
+            key="categoria",
+            disabled=True,
         )
 
-    descripcion = st.text_input("Descripción breve *", placeholder="Ej. Suscripción anual de software...")
+    descripcion = st.text_input(
+        "Descripción breve *",
+        placeholder="Ej. Suscripción anual de software...",
+        key="descripcion",
+    )
 
-    file = st.file_uploader("Documento de respaldo (recibo/factura) *", type=["pdf", "png", "jpg", "jpeg", "webp"])
-    comentario_inicial = st.text_area("Comentario (opcional)", placeholder="Ej. Detalles útiles para aprobación…")
+    file = st.file_uploader(
+        "Documento de respaldo (recibo/factura) *",
+        type=["pdf", "png", "jpg", "jpeg", "webp"],
+        key="archivo",
+    )
+    comentario_inicial = st.text_area(
+        "Comentario (opcional)",
+        placeholder="Ej. Detalles útiles para aprobación…",
+        key="comentario",
+    )
 
     # Duplicados simples: mismo proveedor y mismo monto en los últimos 30 días
     if supplier_id and amount and amount > 0:
@@ -78,7 +109,7 @@ with tab_nueva:
             st.caption("No se encontraron solicitudes similares recientes.")
 
     # Enviar
-    if st.button("Enviar solicitud", type="primary", use_container_width=False, disabled=not cats):
+    if st.button("Enviar solicitud", type="primary", use_container_width=False, disabled=not suppliers):
         if not supplier_id:
             st.error("Selecciona un proveedor.")
         elif not amount or amount <= 0:
@@ -115,6 +146,15 @@ with tab_nueva:
 
                 st.success("Solicitud creada correctamente.")
                 st.balloons()
+
+                # Reiniciar campos
+                st.session_state.sup_name = ""
+                st.session_state.monto = 0.0
+                st.session_state.descripcion = ""
+                st.session_state.comentario = ""
+                st.session_state.archivo = None
+                st.session_state.categoria = ""
+
                 st.rerun()
             except Exception as e:
                 st.error(f"No se pudo crear la solicitud: {e}")

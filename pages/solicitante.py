@@ -39,7 +39,17 @@ tab_nueva, tab_mias, tab_detalle = st.tabs(["Nueva solicitud", "Mis solicitudes"
 with tab_nueva:
     st.write("**Crear nueva solicitud**")
 
-    # Estado inicial para widgets, así podemos reiniciarlos tras enviar
+    # Reinicia los campos si se indicó
+    if st.session_state.get("reset_form"):
+        st.session_state.reset_form = False
+        st.session_state["sup_name"] = ""
+        st.session_state["monto"] = 0.0
+        st.session_state["descripcion"] = ""
+        st.session_state["comentario"] = ""
+        st.session_state["archivo"] = None
+        st.session_state["categoria"] = ""
+
+    # Estado inicial para widgets
     if "sup_name" not in st.session_state:
         st.session_state["sup_name"] = ""
     if "monto" not in st.session_state:
@@ -48,6 +58,10 @@ with tab_nueva:
         st.session_state["descripcion"] = ""
     if "comentario" not in st.session_state:
         st.session_state["comentario"] = ""
+    if "archivo" not in st.session_state:
+        st.session_state["archivo"] = None
+    if "categoria" not in st.session_state:
+        st.session_state["categoria"] = ""
 
     suppliers = list_suppliers()
     if not suppliers:
@@ -144,15 +158,7 @@ with tab_nueva:
 
                 st.success("Solicitud creada correctamente.")
                 st.balloons()
-
-                # Reiniciar campos
-                st.session_state.sup_name = ""
-                st.session_state.monto = 0.0
-                st.session_state.descripcion = ""
-                st.session_state.comentario = ""
-                st.session_state.pop("archivo", None)
-                st.session_state.categoria = ""
-
+                st.session_state.reset_form = True
                 st.rerun()
             except Exception as e:
                 st.error(f"No se pudo crear la solicitud: {e}")

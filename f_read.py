@@ -285,14 +285,20 @@ def list_expenses_for_status(status: Optional[str]) -> List[Dict[str, Any]]:
     sb = get_client()
     q = (
         sb.schema("public")
-        .table("v_expenses_basic")
-        .select("id,supplier_name,amount,category,description,status,created_at,supporting_doc_key,payment_doc_key,requested_by")
+        .table("expenses")
+        .select(
+            "id,supplier_id,amount,category,description,status,created_at,"
+            "supporting_doc_key,payment_doc_key,requested_by,suppliers(name)"
+        )
         .order("created_at", desc=True)
     )
     if status:
         q = q.eq("status", status)
     res = q.execute()
     rows = res.data or []
+    for r in rows:
+        sup = r.pop("suppliers", None) or {}
+        r["supplier_name"] = sup.get("name", "")
     emails = _emails_by_ids({r["requested_by"] for r in rows})
     for r in rows:
         r["requested_by_email"] = emails.get(r["requested_by"], "")
@@ -302,8 +308,11 @@ def get_expense_by_id_for_approver(expense_id: str) -> Optional[Dict[str, Any]]:
     sb = get_client()
     res = (
         sb.schema("public")
-        .table("v_expenses_basic")
-        .select("id,supplier_name,amount,category,description,status,created_at,supporting_doc_key,payment_doc_key,requested_by")
+        .table("expenses")
+        .select(
+            "id,supplier_id,amount,category,description,status,created_at,"
+            "supporting_doc_key,payment_doc_key,requested_by,suppliers(name)"
+        )
         .eq("id", expense_id)
         .single()
         .execute()
@@ -311,6 +320,8 @@ def get_expense_by_id_for_approver(expense_id: str) -> Optional[Dict[str, Any]]:
     row = res.data
     if not row:
         return None
+    sup = row.pop("suppliers", None) or {}
+    row["supplier_name"] = sup.get("name", "")
     row["requested_by_email"] = _emails_by_ids([row["requested_by"]]).get(row["requested_by"], "")
     return row
 
@@ -330,21 +341,15 @@ def list_expenses_by_supplier_id(supplier_id: str) -> List[Dict[str, Any]]:
     sb = get_client()
     res = (
         sb.schema("public")
-        .table("v_expenses_basic")
-        .select("id,supplier_name,amount,category,description,status,created_at,supporting_doc_key,requested_by")
-        .execute()
-    )
-    rows = [r for r in (res.data or []) if r.get("supplier_name")]  # filter later if names collide
-    # Better: query expenses table by supplier_id then enrich with supplier_name
-    res2 = (
-        sb.schema("public")
         .table("expenses")
-        .select("id,amount,category,description,status,created_at,supporting_doc_key,requested_by,supplier_id")
+        .select(
+            "id,amount,category,description,status,created_at,supporting_doc_key,requested_by,supplier_id"
+        )
         .eq("supplier_id", supplier_id)
         .order("created_at", desc=True)
         .execute()
     )
-    base = res2.data or []
+    base = res.data or []
     # get name
     sups = {
         s["id"]: s["name"]

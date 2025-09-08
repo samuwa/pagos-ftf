@@ -138,7 +138,7 @@ with tab2:
         st.error("No se encontró la solicitud seleccionada.")
         st.stop()
 
-    left, right = st.columns([2, 1])
+    left, mid, right = st.columns([2, 2, 1])
 
     # ---- Left: details, logs, comments
     with left:
@@ -196,6 +196,29 @@ with tab2:
                 ]
             )
             st.dataframe(com_df, use_container_width=True, hide_index=True)
+
+    # ---- Middle: supplier history
+    with mid:
+        st.write("**Historial del proveedor**")
+        sup_id = exp.get("supplier_id")
+        hist_rows = list_expenses_by_supplier_id(sup_id) if sup_id else []
+        if hist_rows:
+            hist_df = pd.DataFrame(
+                [
+                    {
+                        "Descripción": r.get("description", "") or "",
+                        "Monto": f"{r['amount']:.2f}",
+                        "Categoría": r["category"],
+                        "Estado": r["status"],
+                        "Solicitante": r.get("requested_by_email", ""),
+                        "Creado": _fmt_dt(r["created_at"]),
+                    }
+                    for r in hist_rows
+                ]
+            )
+            st.dataframe(hist_df, use_container_width=True, hide_index=True)
+        else:
+            st.caption("Sin historial.")
 
     # ---- Right: update status + add comment
     with right:

@@ -140,7 +140,7 @@ with tab2:
         st.error("No se encontró la solicitud seleccionada.")
         st.stop()
 
-    left, mid, right = st.columns([2, 2, 1])
+    left, mid, right = st.columns([2, 1, 3])
 
     # ---- Izquierda: detalles + docs + logs + comentarios
     with left:
@@ -186,7 +186,7 @@ with tab2:
             st.caption("No hay comentarios.")
 
     # ---- Medio: historial del proveedor
-    with mid:
+    with right:
         st.write("**Historial del proveedor**")
         sup_id = exp.get("supplier_id")
         hist_rows = list_expenses_by_supplier_id(sup_id) if sup_id else []
@@ -209,7 +209,7 @@ with tab2:
             st.caption("Sin historial.")
 
     # ---- Derecha: marcar pagado / comentario
-    with right:
+    with mid:
         st.write("**Actualizar estado / marcar pagado**")
 
         estados_pagador = ["aprobado", "pagado"]  # Pagador solo debería usar estos

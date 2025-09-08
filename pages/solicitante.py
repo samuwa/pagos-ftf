@@ -190,7 +190,14 @@ with tab_detalle:
         f"{m['created_at']} — {m['supplier_name']} — {m['amount']:.2f} — {m['status']}": m["id"]
         for m in mis
     }
-    sel_label = st.selectbox("Selecciona una solicitud", list(opts.keys()))
+    sel_label = st.selectbox(
+        "Selecciona una solicitud",
+        [""] + list(opts.keys()),
+        index=0,
+        key="solic_detalle_sel",
+    )
+    if not sel_label:
+        st.stop()
     sel_id = opts[sel_label]
 
     exp = get_my_expense(user_id, sel_id)
@@ -234,7 +241,11 @@ with tab_detalle:
     # Agregar comentario
     st.write("**Agregar comentario**")
     with st.form("form_comentario", clear_on_submit=True):
-        txt = st.text_area("Comentario", placeholder="Escribe tu comentario…")
+        txt = st.text_area(
+            "Comentario",
+            placeholder="Escribe tu comentario…",
+            key="solic_detalle_comment",
+        )
         if st.form_submit_button("Guardar comentario"):
             if not txt or not txt.strip():
                 st.error("Escribe un comentario.")
@@ -242,6 +253,8 @@ with tab_detalle:
                 try:
                     add_expense_comment(sel_id, user_id, txt.strip())
                     st.success("Comentario agregado.")
+                    st.session_state.solic_detalle_sel = ""
+                    st.session_state.solic_detalle_comment = ""
                     st.rerun()
                 except Exception as e:
                     st.error(f"No se pudo guardar el comentario: {e}")

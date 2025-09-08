@@ -118,7 +118,14 @@ with tab2:
         : r["id"]
         for r in rows
     }
-    sel_label = st.selectbox("Selecciona una solicitud", list(opts.keys()))
+    sel_label = st.selectbox(
+        "Selecciona una solicitud",
+        [""] + list(opts.keys()),
+        index=0,
+        key="aprobador_sel",
+    )
+    if not sel_label:
+        st.stop()
     expense_id = opts[sel_label]
 
     exp = get_expense_by_id_for_approver(expense_id)
@@ -195,7 +202,7 @@ with tab2:
             options=estados_actualizables,
             index=estados_actualizables.index(exp["status"]) if exp["status"] in estados_actualizables else 0,
         )
-        comment = st.text_area("Comentario (opcional)")
+        comment = st.text_area("Comentario (opcional)", key="aprobador_comment")
 
         if st.button("Guardar cambios", type="primary", use_container_width=True):
             try:
@@ -206,6 +213,8 @@ with tab2:
                     # Cambia estado (y opcionalmente agrega comentario en el log)
                     update_expense_status(expense_id, user_id, new_status, comment or None)
                 st.success("Actualización guardada.")
+                st.session_state.aprobador_sel = ""
+                st.session_state.aprobador_comment = ""
                 st.rerun()
             except Exception as e:
                 st.error(f"No se pudo actualizar: {e}")

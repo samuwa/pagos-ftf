@@ -4,6 +4,7 @@ from f_auth import get_client
 from collections import defaultdict
 import datetime as dt
 import pandas as pd
+from postgrest.exceptions import APIError
 
 # --------------------------
 # Utilidades de UI
@@ -342,16 +343,20 @@ def list_requesters_for_approver() -> List[Dict[str, Any]]:
 @st.cache_data(ttl=20, show_spinner=False)
 def list_expenses_by_supplier_id(supplier_id: str) -> List[Dict[str, Any]]:
     sb = get_client()
-    res = (
-        sb.schema("public")
-        .table("expenses")
-        .select(
-            "id,amount,category,description,status,created_at,supporting_doc_key,requested_by,supplier_id"
+    try:
+        res = (
+            sb.schema("public")
+            .table("expenses")
+            .select(
+                "id,amount,category,description,status,created_at,supporting_doc_key,requested_by,supplier_id"
+            )
+            .eq("supplier_id", supplier_id)
+            .order("created_at", desc=True)
+            .execute()
         )
-        .eq("supplier_id", supplier_id)
-        .order("created_at", desc=True)
-        .execute()
-    )
+    except APIError as e:
+        st.error("No se pudieron obtener los gastos para este proveedor.")
+        return []
     base = res.data or []
     # get name
     sups = {

@@ -184,10 +184,12 @@ def list_my_expenses(user_id: str, status: Optional[str] = None) -> List[Dict[st
     sb = get_client()
     q = (
         sb.schema("public")
+
         .table("expenses")
         .select(
             "id,amount,category,status,supporting_doc_key,created_at,"
             "requested_by,description,reimbursement,reimbursement_person,suppliers(name)"
+
         )
         .eq("requested_by", user_id)
         .order("created_at", desc=True)
@@ -234,10 +236,12 @@ def get_my_expense(user_id: str, expense_id: str) -> Optional[Dict[str, Any]]:
     sb = get_client()
     res = (
         sb.schema("public")
+
         .table("expenses")
         .select(
             "id,amount,category,status,supporting_doc_key,payment_doc_key,created_at,"
             "requested_by,description,reimbursement,reimbursement_person,suppliers(name)"
+
         )
         .eq("id", expense_id)
         .eq("requested_by", user_id)

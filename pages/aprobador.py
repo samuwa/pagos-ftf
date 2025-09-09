@@ -151,8 +151,13 @@ with tab2:
             f"**Categoría:** {exp['category']}  \n"
             f"**Estado actual:** {exp['status']}  \n"
             f"**Creado:** {_fmt_dt(exp['created_at'])}  \n"
-            f"**Solicitante:** {exp.get('requested_by_email','')}"
+            f"**Solicitante:** {exp.get('requested_by_email','')}  \n"
+            f"**Reembolso:** {'Sí' if exp.get('reimbursement') else 'No'}"
         )
+        if exp.get("reimbursement"):
+            details_md += (
+                f"  \n**Persona a reembolsar:** {exp.get('reimbursement_person') or '(no especificada)'}"
+            )
         st.markdown(details_md)
         cols_files = st.columns(2)
         with cols_files[0]:

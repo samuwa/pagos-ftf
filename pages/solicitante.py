@@ -288,14 +288,20 @@ with tab_detalle:
         st.stop()
 
     # Encabezado de detalles
-    st.markdown(
+    detalles_md = (
         f"**Proveedor:** {exp['supplier_name']}  \n"
         f"**Monto:** {exp['amount']:.2f}  \n"
         f"**Categoría:** {exp['category']}  \n"
         f"**Descripción:** {exp.get('description','')}  \n"
         f"**Estado:** {exp['status']}  \n"
-        f"**Fecha Creado:** {pd.to_datetime(exp['created_at']).strftime('%Y-%m-%d')}"
-)
+        f"**Fecha Creado:** {pd.to_datetime(exp['created_at']).strftime('%Y-%m-%d')}  \n"
+        f"**Reembolso:** {'Sí' if exp.get('reimbursement') else 'No'}"
+    )
+    if exp.get("reimbursement"):
+        detalles_md += (
+            f"  \n**Persona a reembolsar:** {exp.get('reimbursement_person') or '(no especificada)'}"
+        )
+    st.markdown(detalles_md)
 
     # Enlaces rápidos a archivos
     rec_key = exp.get("supporting_doc_key")

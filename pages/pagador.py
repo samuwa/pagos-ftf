@@ -144,15 +144,21 @@ with tab2:
 
     # ---- Izquierda: detalles + docs + logs + comentarios
     with left:
-        st.markdown(
+        detalles_md = (
             f"**Proveedor:** {exp['supplier_name']}  \n"
             f"**Descripción:** {exp.get('description','')}  \n"
             f"**Monto:** {exp['amount']:.2f}  \n"
             f"**Categoría:** {exp['category']}  \n"
             f"**Estado actual:** {exp['status']}  \n"
             f"**Creado:** {_fmt_dt(exp['created_at'])}  \n"
-            f"**Solicitante:** {exp.get('requested_by_email','')}"
+            f"**Solicitante:** {exp.get('requested_by_email','')}  \n"
+            f"**Reembolso:** {'Sí' if exp.get('reimbursement') else 'No'}"
         )
+        if exp.get("reimbursement"):
+            detalles_md += (
+                f"  \n**Persona a reembolsar:** {exp.get('reimbursement_person') or '(no especificada)'}"
+            )
+        st.markdown(detalles_md)
 
         rec_key = exp.get("supporting_doc_key")
 

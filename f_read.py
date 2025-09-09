@@ -105,6 +105,13 @@ def list_categories() -> List[str]:
     res = sb.schema("public").table("categories").select("name").order("name").execute()
     return [r["name"] for r in (res.data or [])]
 
+
+@st.cache_data(ttl=60, show_spinner=False)
+def list_people() -> List[str]:
+    sb = get_client()
+    res = sb.schema("public").table("people").select("name").order("name").execute()
+    return [r["name"] for r in (res.data or [])]
+
 def get_user_id_by_email(email: str) -> Optional[str]:
     """Get public.users.id by email (case-insensitive)."""
     sb = get_client()

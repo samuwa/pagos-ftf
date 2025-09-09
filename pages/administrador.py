@@ -7,7 +7,7 @@ import streamlit as st
 import pandas as pd
 from supabase import create_client
 from f_auth import require_administrador, current_user, get_client
-from f_read import get_all_users, list_suppliers, list_categories
+from f_read import get_all_users, list_suppliers, list_categories, list_people
 from f_cud import (
     assign_role,
     remove_role,
@@ -15,6 +15,7 @@ from f_cud import (
     create_supplier,
     update_user_password,
     create_category,
+    create_person,
 )
 
 st.set_page_config(page_icon="🛡️", layout="wide")
@@ -40,12 +41,13 @@ def get_admin_client():
 
 ADMIN_CLIENT = get_admin_client()
 
-tab_crear, tab_editar, tab_pass, tab_prov, tab_cats = st.tabs([
+tab_crear, tab_editar, tab_pass, tab_prov, tab_cats, tab_personas = st.tabs([
     "Crear usuario",
     "Editar usuario",
     "Actualizar contraseña",
     "Proveedores",
     "Categorías",
+    "Personas",
 ])
 
 # =======================
@@ -285,5 +287,44 @@ with tab_cats:
                     msg = str(e)
                     if "duplicate" in msg.lower() or "unique" in msg.lower():
                         st.warning("Esa categoría ya existe.")
+                    else:
+                        st.error(f"No se pudo agregar: {e}")
+
+# =======================
+# Tab 6: Personas
+# =======================
+with tab_personas:
+    st.subheader("Personas")
+
+    personas = list_people()
+    if personas:
+        st.dataframe(
+            pd.DataFrame({"Nombre": personas}),
+            use_container_width=True,
+            hide_index=True,
+        )
+    else:
+        st.caption("Aún no hay personas.")
+
+    st.markdown("### Agregar persona")
+    with st.form("form_add_person", clear_on_submit=True):
+        nombre = st.text_input("Nombre *").strip()
+        submitted = st.form_submit_button("Agregar")
+        if submitted:
+            if not nombre:
+                st.error("El nombre es obligatorio.")
+            else:
+                try:
+                    create_person(nombre)
+                    try:
+                        list_people.clear()
+                    except Exception:
+                        pass
+                    st.success("Persona agregada.")
+                    st.rerun()
+                except Exception as e:
+                    msg = str(e)
+                    if "duplicate" in msg.lower() or "unique" in msg.lower():
+                        st.warning("Esa persona ya existe.")
                     else:
                         st.error(f"No se pudo agregar: {e}")

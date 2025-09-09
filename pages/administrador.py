@@ -247,6 +247,7 @@ with tab_prov:
                 except Exception:
                     pass
                 st.success("Proveedor creado.")
+                st.balloons()
                 st.rerun()
             except Exception as e:
                 msg = str(e).lower()

@@ -87,6 +87,16 @@ def create_category(name: str) -> None:
     sb = get_client()
     sb.schema("public").table("categories").insert({"name": nm}).execute()
 
+
+# ------------- Personas -------------
+
+def create_person(name: str) -> None:
+    nm = (name or "").strip()
+    if not nm:
+        raise ValueError("El nombre es obligatorio.")
+    sb = get_client()
+    sb.schema("public").table("people").insert({"name": nm}).execute()
+
 def assign_role(user_id: str, role: str) -> None:
     """
     Grant a single role (Spanish enum string) to the user.
@@ -144,6 +154,8 @@ def create_expense(
     category: str,
     supporting_doc_key: str,
     description: Optional[str] = None,   # <--- NEW
+    reimbursement: bool = False,
+    reimbursement_person: Optional[str] = None,
 ) -> Optional[str]:
     """
     Crea un expense (status 'solicitado') con descripción opcional.
@@ -151,6 +163,9 @@ def create_expense(
     raíz del bucket de Storage (p.ej. ``"uuid.pdf"``); ya no incluye una ruta
     de carpeta.
     """
+    if reimbursement and not (reimbursement_person or "").strip():
+        raise ValueError("Debes seleccionar la persona del reembolso.")
+
     sb = get_client()
     payload = {
         "requested_by": requested_by,
@@ -158,6 +173,8 @@ def create_expense(
         "amount": round(float(amount), 2),
         "category": category,
         "supporting_doc_key": (supporting_doc_key or "").strip(),
+        "reimbursement": bool(reimbursement),
+        "reimbursement_person": (reimbursement_person or None),
     }
     if description:
         payload["description"] = description

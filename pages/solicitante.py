@@ -17,6 +17,7 @@ from f_read import (
     get_my_expense,
     list_expense_comments,
     list_expense_logs,
+    list_people,
 )
 from f_cud import create_expense, add_expense_comment
 
@@ -48,6 +49,8 @@ with tab_nueva:
         st.session_state["comentario"] = ""
         st.session_state.pop("archivo", None)
         st.session_state["categoria"] = ""
+        st.session_state["reembolso"] = False
+        st.session_state["reembolso_persona"] = ""
 
     # Estado inicial para widgets
     if "sup_name" not in st.session_state:
@@ -60,6 +63,10 @@ with tab_nueva:
         st.session_state["comentario"] = ""
     if "categoria" not in st.session_state:
         st.session_state["categoria"] = ""
+    if "reembolso" not in st.session_state:
+        st.session_state["reembolso"] = False
+    if "reembolso_persona" not in st.session_state:
+        st.session_state["reembolso_persona"] = ""
 
     suppliers = list_suppliers()
     if not suppliers:
@@ -104,6 +111,23 @@ with tab_nueva:
         key="comentario",
     )
 
+    reembolso = st.checkbox("Reembolso", key="reembolso")
+    personas = list_people() if reembolso else []
+    if reembolso:
+        if personas:
+            reembolso_persona = st.selectbox(
+                "Persona a reembolsar",
+                options=[""] + personas,
+                key="reembolso_persona",
+            )
+        else:
+            st.info(
+                "No hay personas registradas. Pide al administrador que agregue en Admin > Personas."
+            )
+            reembolso_persona = ""
+    else:
+        reembolso_persona = ""
+
     # Duplicados simples: mismo proveedor y mismo monto en los últimos 30 días
     if supplier_id and amount and amount > 0:
         dupes = recent_similar_expenses(supplier_id, float(amount), days=30)
@@ -118,8 +142,15 @@ with tab_nueva:
         else:
             st.caption("No se encontraron solicitudes similares recientes.")
 
+    disable_submit = (not suppliers) or (reembolso and not personas)
+
     # Enviar
-    if st.button("Enviar solicitud", type="primary", use_container_width=False, disabled=not suppliers):
+    if st.button(
+        "Enviar solicitud",
+        type="primary",
+        use_container_width=False,
+        disabled=disable_submit,
+    ):
         if not supplier_id:
             st.error("Selecciona un proveedor.")
         elif not amount or amount <= 0:
@@ -128,6 +159,8 @@ with tab_nueva:
             st.error("Selecciona una categoría.")
         elif not file:
             st.error("Adjunta el documento de respaldo.")
+        elif reembolso and not reembolso_persona:
+            st.error("Selecciona la persona a reembolsar.")
         else:
             try:
                 # Subir archivo a Storage (bucket 'quotes')
@@ -148,6 +181,8 @@ with tab_nueva:
                     category=categoria,
                     supporting_doc_key=file_id,
                     description=descripcion.strip() if descripcion else None,
+                    reimbursement=reembolso,
+                    reimbursement_person=reembolso_persona or None,
                 )
 
                 # Comentario inicial (si hay)

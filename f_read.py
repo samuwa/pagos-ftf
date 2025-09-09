@@ -185,7 +185,10 @@ def list_my_expenses(user_id: str, status: Optional[str] = None) -> List[Dict[st
     q = (
         sb.schema("public")
         .table("v_expenses_basic")
-        .select("id,supplier_name,amount,category,status,supporting_doc_key,created_at,requested_by,description")  # <---
+        .select(
+            "id,supplier_name,amount,category,status,supporting_doc_key,created_at,"
+            "requested_by,description,reimbursement,reimbursement_person"
+        )
         .eq("requested_by", user_id)
         .order("created_at", desc=True)
     )
@@ -228,7 +231,10 @@ def get_my_expense(user_id: str, expense_id: str) -> Optional[Dict[str, Any]]:
     res = (
         sb.schema("public")
         .table("v_expenses_basic")
-        .select("id,supplier_name,amount,category,status,supporting_doc_key,payment_doc_key,created_at,requested_by,description")  # <---
+        .select(
+            "id,supplier_name,amount,category,status,supporting_doc_key,payment_doc_key,created_at,"
+            "requested_by,description,reimbursement,reimbursement_person"
+        )
         .eq("id", expense_id)
         .eq("requested_by", user_id)
         .single()
@@ -297,7 +303,7 @@ def list_expenses_for_status(status: Optional[str]) -> List[Dict[str, Any]]:
         .table("expenses")
         .select(
             "id,supplier_id,amount,category,description,status,created_at,"
-            "supporting_doc_key,payment_doc_key,requested_by,suppliers(name)"
+            "supporting_doc_key,payment_doc_key,requested_by,reimbursement,reimbursement_person,suppliers(name)"
         )
         .order("created_at", desc=True)
     )
@@ -321,7 +327,7 @@ def get_expense_by_id_for_approver(expense_id: str) -> Optional[Dict[str, Any]]:
         .table("expenses")
         .select(
             "id,supplier_id,amount,category,description,status,created_at,"
-            "supporting_doc_key,payment_doc_key,requested_by,suppliers(name)"
+            "supporting_doc_key,payment_doc_key,requested_by,reimbursement,reimbursement_person,suppliers(name)"
         )
 
         .eq("id", expense_id)
@@ -390,7 +396,10 @@ def list_expenses_by_category(category: str) -> List[Dict[str, Any]]:
     res = (
         sb.schema("public")
         .table("v_expenses_basic")
-        .select("id,supplier_name,amount,category,description,status,created_at,supporting_doc_key,requested_by")
+        .select(
+            "id,supplier_name,amount,category,description,status,created_at,"
+            "supporting_doc_key,requested_by,reimbursement,reimbursement_person"
+        )
         .eq("category", category)
         .order("created_at", desc=True)
         .execute()
@@ -407,7 +416,10 @@ def list_expenses_by_requester(user_id: str) -> List[Dict[str, Any]]:
     res = (
         sb.schema("public")
         .table("v_expenses_basic")
-        .select("id,supplier_name,amount,category,description,status,created_at,supporting_doc_key,requested_by")
+        .select(
+            "id,supplier_name,amount,category,description,status,created_at,"
+            "supporting_doc_key,requested_by,reimbursement,reimbursement_person"
+        )
         .eq("requested_by", user_id)
         .order("created_at", desc=True)
         .execute()
@@ -548,7 +560,11 @@ def list_paid_expenses_enriched(
     q = (
         sb.schema("public")
         .table("v_expenses_basic")
-        .select("id,supplier_name,amount,category,description,status,created_at,supporting_doc_key,payment_doc_key,requested_by,approved_by,paid_by")
+        .select(
+            "id,supplier_name,amount,category,description,status,created_at,"
+            "supporting_doc_key,payment_doc_key,requested_by,approved_by,paid_by,"
+            "reimbursement,reimbursement_person"
+        )
         .eq("status", "pagado")
         .order("created_at", desc=True)
     )

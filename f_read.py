@@ -184,10 +184,12 @@ def list_my_expenses(user_id: str, status: Optional[str] = None) -> List[Dict[st
     sb = get_client()
     q = (
         sb.schema("public")
-        .table("v_expenses_basic")
+
+        .table("expenses")
         .select(
-            "id,supplier_name,amount,category,status,supporting_doc_key,created_at,"
-            "requested_by,description,reimbursement,reimbursement_person"
+            "id,amount,category,status,supporting_doc_key,created_at,"
+            "requested_by,description,reimbursement,reimbursement_person,suppliers(name)"
+
         )
         .eq("requested_by", user_id)
         .order("created_at", desc=True)
@@ -195,7 +197,11 @@ def list_my_expenses(user_id: str, status: Optional[str] = None) -> List[Dict[st
     if status:
         q = q.eq("status", status)
     res = q.execute()
-    return res.data or []
+    rows = res.data or []
+    for r in rows:
+        sup = r.pop("suppliers", None) or {}
+        r["supplier_name"] = sup.get("name", "")
+    return rows
 
 @st.cache_data(ttl=20, show_spinner=False)
 def recent_similar_expenses(supplier_id: str, amount: float, days: int = 30) -> List[Dict[str, Any]]:
@@ -230,17 +236,24 @@ def get_my_expense(user_id: str, expense_id: str) -> Optional[Dict[str, Any]]:
     sb = get_client()
     res = (
         sb.schema("public")
-        .table("v_expenses_basic")
+
+        .table("expenses")
         .select(
-            "id,supplier_name,amount,category,status,supporting_doc_key,payment_doc_key,created_at,"
-            "requested_by,description,reimbursement,reimbursement_person"
+            "id,amount,category,status,supporting_doc_key,payment_doc_key,created_at,"
+            "requested_by,description,reimbursement,reimbursement_person,suppliers(name)"
+
         )
         .eq("id", expense_id)
         .eq("requested_by", user_id)
         .single()
         .execute()
     )
-    return res.data
+    row = res.data
+    if not row:
+        return None
+    sup = row.pop("suppliers", None) or {}
+    row["supplier_name"] = sup.get("name", "")
+    return row
 
 def list_expense_logs(expense_id: str) -> List[Dict[str, Any]]:
     """Lista los logs de una solicitud y agrega ``actor_email``."""
@@ -395,10 +408,10 @@ def list_expenses_by_category(category: str) -> List[Dict[str, Any]]:
     sb = get_client()
     res = (
         sb.schema("public")
-        .table("v_expenses_basic")
+        .table("expenses")
         .select(
-            "id,supplier_name,amount,category,description,status,created_at,"
-            "supporting_doc_key,requested_by,reimbursement,reimbursement_person"
+            "id,amount,category,description,status,created_at,"
+            "supporting_doc_key,requested_by,reimbursement,reimbursement_person,suppliers(name)"
         )
         .eq("category", category)
         .order("created_at", desc=True)
@@ -407,6 +420,8 @@ def list_expenses_by_category(category: str) -> List[Dict[str, Any]]:
     rows = res.data or []
     emails = _emails_by_ids({r["requested_by"] for r in rows})
     for r in rows:
+        sup = r.pop("suppliers", None) or {}
+        r["supplier_name"] = sup.get("name", "")
         r["requested_by_email"] = emails.get(r["requested_by"], "")
     return rows
 
@@ -415,10 +430,10 @@ def list_expenses_by_requester(user_id: str) -> List[Dict[str, Any]]:
     sb = get_client()
     res = (
         sb.schema("public")
-        .table("v_expenses_basic")
+        .table("expenses")
         .select(
-            "id,supplier_name,amount,category,description,status,created_at,"
-            "supporting_doc_key,requested_by,reimbursement,reimbursement_person"
+            "id,amount,category,description,status,created_at,"
+            "supporting_doc_key,requested_by,reimbursement,reimbursement_person,suppliers(name)"
         )
         .eq("requested_by", user_id)
         .order("created_at", desc=True)
@@ -427,6 +442,8 @@ def list_expenses_by_requester(user_id: str) -> List[Dict[str, Any]]:
     rows = res.data or []
     email = _emails_by_ids([user_id]).get(user_id, "")
     for r in rows:
+        sup = r.pop("suppliers", None) or {}
+        r["supplier_name"] = sup.get("name", "")
         r["requested_by_email"] = email
     return rows
 def receipt_file_key(key: str) -> Optional[str]:
@@ -550,7 +567,7 @@ def list_paid_expenses_enriched(
     paid_to: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
-    Trae expenses pagados desde v_expenses_basic y enriquece con:
+    Trae expenses pagados y enriquece con:
       - requested_by_email, approved_by_email, paid_by_email
       - paid_at (desde expense_logs)
     Aplica filtros de creación en SQL y filtros por nombre/categoría/email en Python.
@@ -559,11 +576,11 @@ def list_paid_expenses_enriched(
     sb = get_client()
     q = (
         sb.schema("public")
-        .table("v_expenses_basic")
+        .table("expenses")
         .select(
-            "id,supplier_name,amount,category,description,status,created_at,"
+            "id,amount,category,description,status,created_at,"
             "supporting_doc_key,payment_doc_key,requested_by,approved_by,paid_by,"
-            "reimbursement,reimbursement_person"
+            "reimbursement,reimbursement_person,suppliers(name)"
         )
         .eq("status", "pagado")
         .order("created_at", desc=True)
@@ -575,6 +592,9 @@ def list_paid_expenses_enriched(
 
     res = q.execute()
     rows = res.data or []
+    for r in rows:
+        sup = r.pop("suppliers", None) or {}
+        r["supplier_name"] = sup.get("name", "")
 
     # Map emails
     uid_set = set()

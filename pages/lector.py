@@ -121,58 +121,42 @@ with tab_reporte:
 
     st.divider()
 
-    tab_resumen, tab_comparar = st.tabs(["Resumen", "Comparar"])
+    st.write("**Comparar por dimensión**")
 
-    with tab_resumen:
-        st.write("**Resumen por dimensión**")
+    dim = st.radio(
+        "Dimensión",
+        options=["Proveedores", "Solicitantes", "Aprobadores", "Categorías"],
+        horizontal=True,
+    )
+    metric = st.radio(
+        "Métrica",
+        options=["Monto total", "Número de gastos"],
+        horizontal=True,
+    )
+    top_n = st.slider("Top N", min_value=5, max_value=50, value=10)
 
-        def _top_table(series, title, n=10):
-            if series.empty:
-                st.caption(f"Sin datos para {title}.")
-                return
-            tb = (series.value_counts().head(n)).rename("Gastos")
-            st.write(f"**Top {n} por {title}**")
-            st.dataframe(tb, use_container_width=True)
+    if dim == "Proveedores":
+        field = "supplier_name"
+    elif dim == "Solicitantes":
+        field = "requested_by_email"
+    elif dim == "Aprobadores":
+        field = "approved_by_email"
+    else:
+        field = "category"
 
-        cA, cB, cC = st.columns(3)
-        with cA:
-            _top_table(df["supplier_name"], "Proveedor")
-        with cB:
-            _top_table(df["requested_by_email"], "Solicitante")
-        with cC:
-            _top_table(df["approved_by_email"], "Aprobador")
+    if metric == "Monto total":
+        ser = df.groupby(field)["amount"].sum()
+    else:
+        ser = df.groupby(field)["id"].count()
 
-        st.write("**Evolución (por fecha de pago)**")
-        ts = df.copy()
-        ts["paid_date"] = pd.to_datetime(ts["paid_at"]).dt.date
-        if not ts.empty:
-            grp = ts.groupby("paid_date").agg(
-                gastos=("id", "count"),
-                monto=("amount", "sum")
-            ).reset_index()
-            c1, c2 = st.columns(2)
-            with c1:
-                st.line_chart(grp, x="paid_date", y="gastos", use_container_width=True)
-            with c2:
-                st.line_chart(grp, x="paid_date", y="monto", use_container_width=True)
-        else:
-            st.caption("Sin datos para serie temporal.")
+    ser = ser.sort_values(ascending=False).head(top_n)
 
-    with tab_comparar:
-        st.write("**Comparar por dimensión**")
-
-        dim = st.radio("Dimensión", options=["Proveedores", "Solicitantes", "Aprobadores", "Categorías"], horizontal=True)
-
-        if dim == "Proveedores":
-            ser = df.groupby("supplier_name")["amount"].sum().sort_values(ascending=False)
-        elif dim == "Solicitantes":
-            ser = df.groupby("requested_by_email")["amount"].sum().sort_values(ascending=False)
-        elif dim == "Aprobadores":
-            ser = df.groupby("approved_by_email")["amount"].sum().sort_values(ascending=False)
-        else:
-            ser = df.groupby("category")["amount"].sum().sort_values(ascending=False)
-
-        st.bar_chart(ser.head(20), use_container_width=True)
+    st.bar_chart(ser, use_container_width=True)
+    st.dataframe(
+        ser.rename(metric),
+        use_container_width=True,
+        height=400,
+    )
 
 # === Tab Detalle: tabla y detalle de un gasto ===
 with tab_detalle:

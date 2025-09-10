@@ -304,7 +304,7 @@ def _emails_by_ids(ids: Iterable[str]) -> dict:
     res = sb.schema("public").table("users").select("id,email").in_("id", ids).execute()
     return {r["id"]: r.get("email") for r in (res.data or [])}
 
-@st.cache_data(ttl=20, show_spinner=False)
+# @st.cache_data(ttl=20, show_spinner=False)
 def list_expenses_for_status(status: Optional[str]) -> List[Dict[str, Any]]:
     """
     For Aprobador: all expenses (optionally filtered by status) with requester email.
@@ -366,7 +366,7 @@ def list_requesters_for_approver() -> List[Dict[str, Any]]:
     emails = _emails_by_ids(ids)
     return [{"id": i, "email": emails.get(i, "")} for i in ids]
 
-@st.cache_data(ttl=20, show_spinner=False)
+# @st.cache_data(ttl=20, show_spinner=False)
 def list_expenses_by_supplier_id(supplier_id: str) -> List[Dict[str, Any]]:
     sb = get_client()
     try:

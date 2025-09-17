@@ -25,7 +25,7 @@ from f_read import (
     _render_download,
 )
 
-from f_cud import mark_expense_as_paid, add_expense_comment
+from f_cud import mark_expense_as_paid, add_expense_comment, update_expense_status
 
 st.set_page_config(page_title="Pagador", page_icon="💸", layout="wide")
 require_pagador()
@@ -218,7 +218,7 @@ with tab2:
     with mid:
         st.write("**Actualizar estado / marcar pagado**")
 
-        estados_pagador = ["aprobado", "pagado"]  # Pagador solo debería usar estos
+        estados_pagador = ["aprobado", "pagado", "rechazado"]  # Pagador puede rechazar
         new_status = st.selectbox(
             "Nuevo estado",
             options=estados_pagador,
@@ -239,9 +239,11 @@ with tab2:
 
         if st.button("Guardar cambios", type="primary", use_container_width=True):
             try:
+                comment_clean = (comment or "").strip()
+
                 # Solo comentario
-                if new_status == exp["status"] and (comment or "").strip() and not pay_file:
-                    add_expense_comment(expense_id, user_id, comment.strip())
+                if new_status == exp["status"] and comment_clean and not pay_file:
+                    add_expense_comment(expense_id, user_id, comment_clean)
                     st.success("Comentario agregado.")
                     st.session_state.pagador_reset = True
                     st.rerun()
@@ -274,12 +276,21 @@ with tab2:
                     st.session_state.pagador_reset = True
                     st.rerun()
 
-                # Cambiar de pagado → aprobado (raro) o simplemente de aprobado sin archivo
+                # Actualizar a aprobado/rechazado
                 else:
-                    # Si baja a 'aprobado' no hay comprobante; si sube a 'pagado' ya lo tratamos arriba
-                    # En este caso (aprobado) permitimos solo comentario adicional
-                    if (comment or "").strip():
-                        add_expense_comment(expense_id, user_id, comment.strip())
+                    status_changed = new_status != exp["status"]
+                    if status_changed:
+                        update_expense_status(
+                            expense_id=expense_id,
+                            actor_id=user_id,
+                            new_status=new_status,
+                            comment=comment_clean or None,
+                        )
+                        st.success("Estado actualizado.")
+                        st.session_state.pagador_reset = True
+                        st.rerun()
+                    elif comment_clean:
+                        add_expense_comment(expense_id, user_id, comment_clean)
                         st.success("Comentario agregado.")
                         st.session_state.pagador_reset = True
                         st.rerun()

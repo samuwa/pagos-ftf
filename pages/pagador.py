@@ -55,6 +55,20 @@ def _expense_label(expense: dict) -> str:
     )
 
 
+def _copy_supporting_doc_to_payments(file_key: str) -> str:
+    """Copia el documento de respaldo al bucket de comprobantes de pago."""
+
+    if not file_key:
+        raise ValueError("Archivo de respaldo inválido.")
+
+    sb = get_client()
+    data = sb.storage.from_("quotes").download(file_key)
+    mime_type, _ = mimetypes.guess_type(file_key)
+    options = {"content-type": mime_type or "application/octet-stream", "upsert": "true"}
+    sb.storage.from_("payments").upload(file_key, data, options)
+    return file_key
+
+
 # ---------------------------------------------------
 # Tabs
 # ---------------------------------------------------
@@ -301,10 +315,65 @@ def pagador_detalle_fragment():
                             )
                     else:
                         payment_date = None
-                    pay_file = st.file_uploader(
-                        "Comprobante de pago (opcional)",
-                        type=["pdf", "png", "jpg", "jpeg", "webp"],
-                    )
+                    file_types = ["pdf", "png", "jpg", "jpeg", "webp"]
+                    pay_file = None
+                    use_supporting_as_payment = False
+                    uploader_key = f"pagador_payment_uploader_{expense_id}"
+                    support_checkbox_key = f"pagador_use_supporting_{expense_id}"
+                    update_checkbox_key = f"pagador_update_payment_doc_{expense_id}"
+
+                    if pay_key:
+                        update_payment_doc = st.checkbox(
+                            "Actualizar comprobante de pago",
+                            value=False,
+                            key=update_checkbox_key,
+                        )
+                        if update_payment_doc:
+                            pay_file = st.file_uploader(
+                                "Comprobante de pago (opcional)",
+                                type=file_types,
+                                key=uploader_key,
+                            )
+                            if rec_key:
+                                use_supporting_as_payment = st.checkbox(
+                                    "Usar documento de respaldo como comprobante de pago",
+                                    value=False,
+                                    key=support_checkbox_key,
+                                )
+                                if use_supporting_as_payment:
+                                    st.caption(
+                                        "Se usará el documento de respaldo actual como comprobante de pago."
+                                    )
+                            else:
+                                st.session_state.pop(support_checkbox_key, None)
+                        else:
+                            st.caption("Ya existe un comprobante de pago adjunto.")
+                            st.session_state.pop(uploader_key, None)
+                            st.session_state.pop(support_checkbox_key, None)
+                    else:
+                        pay_file = st.file_uploader(
+                            "Comprobante de pago (opcional)",
+                            type=file_types,
+                            key=uploader_key,
+                        )
+                        if rec_key:
+                            use_supporting_as_payment = st.checkbox(
+                                "Usar documento de respaldo como comprobante de pago",
+                                value=False,
+                                key=support_checkbox_key,
+                            )
+                            if use_supporting_as_payment:
+                                st.caption(
+                                    "Se usará el documento de respaldo actual como comprobante de pago."
+                                )
+                        else:
+                            st.session_state.pop(support_checkbox_key, None)
+
+                    if use_supporting_as_payment and pay_file:
+                        st.info(
+                            "El archivo cargado se ignorará porque se utilizará el documento de respaldo como comprobante."
+                        )
+
                     comment = st.text_area("Comentario (opcional)", key="pagador_comment")
 
                     if st.button("Guardar cambios", type="primary", use_container_width=True):
@@ -315,7 +384,15 @@ def pagador_detalle_fragment():
 
                             if new_status == "pagado":
                                 payment_doc_key = None
-                                if pay_file:
+                                if use_supporting_as_payment and rec_key:
+                                    try:
+                                        payment_doc_key = _copy_supporting_doc_to_payments(rec_key)
+                                    except Exception as copy_exc:
+                                        raise RuntimeError(
+                                            "No se pudo usar el documento de respaldo como comprobante de pago. "
+                                            "Intenta subir el archivo manualmente."
+                                        ) from copy_exc
+                                elif pay_file:
                                     sb = get_client()
                                     bucket = "payments"
                                     file_id = uuid.uuid4().hex + Path(pay_file.name).suffix

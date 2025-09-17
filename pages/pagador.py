@@ -1,6 +1,7 @@
 # pages/pagador.py
 # Rol Pagador: métricas, listas por estado, detalles+marcar pagado, historial
 
+import mimetypes
 import pandas as pd
 import streamlit as st
 import uuid
@@ -25,7 +26,7 @@ from f_read import (
     _render_download,
 )
 
-from f_cud import mark_expense_as_paid, add_expense_comment
+from f_cud import mark_expense_as_paid, add_expense_comment, update_expense_status
 
 st.set_page_config(page_title="Pagador", page_icon="💸", layout="wide")
 require_pagador()
@@ -105,6 +106,8 @@ with tab2:
     if st.session_state.get("pagador_reset"):
         st.session_state.pagador_sel = ""
         st.session_state.pagador_comment = ""
+        st.session_state.pagador_use_receipt = False
+        st.session_state.pagador_selected_expense_id = None
         st.session_state.pagador_reset = False
 
     # Elegir estado desde el cual seleccionar (tiene sentido 'aprobado' y 'pagado')
@@ -135,11 +138,18 @@ with tab2:
         st.stop()
     expense_id = opts[sel_label]
 
+    prev_selected = st.session_state.get("pagador_selected_expense_id")
+    if prev_selected != expense_id:
+        st.session_state.pagador_selected_expense_id = expense_id
+        st.session_state.pagador_use_receipt = False
+
     exp = get_expense_by_id_for_approver(expense_id)
     if not exp:
         st.error("No se encontró la solicitud seleccionada.")
         st.stop()
 
+    rec_key = exp.get("supporting_doc_key")
+    pay_key = exp.get("payment_doc_key")
     left, mid, right = st.columns([2, 1, 3])
 
     # ---- Izquierda: detalles + docs + logs + comentarios
@@ -160,9 +170,6 @@ with tab2:
             )
         st.markdown(detalles_md)
 
-        rec_key = exp.get("supporting_doc_key")
-
-        pay_key = exp.get("payment_doc_key")
         cols_files = st.columns(2)
         with cols_files[0]:
             _render_download(rec_key, "Documento de respaldo", signed_url_for_receipt)
@@ -218,7 +225,7 @@ with tab2:
     with mid:
         st.write("**Actualizar estado / marcar pagado**")
 
-        estados_pagador = ["aprobado", "pagado"]  # Pagador solo debería usar estos
+        estados_pagador = ["aprobado", "pagado", "rechazado"]  # Pagador puede rechazar
         new_status = st.selectbox(
             "Nuevo estado",
             options=estados_pagador,
@@ -299,7 +306,7 @@ with tab2:
                     st.session_state.pagador_reset = True
                     st.rerun()
 
-                # Cambiar de pagado → aprobado (raro) o simplemente de aprobado sin archivo
+                # Actualizar a aprobado/rechazado
                 else:
                     # Si baja a 'aprobado' no hay comprobante; si sube a 'pagado' ya lo tratamos arriba
                     # En este caso (aprobado) permitimos solo comentario adicional

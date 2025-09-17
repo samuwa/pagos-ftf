@@ -17,7 +17,6 @@ from f_read import (
     _render_download,
 )
 
-st.set_page_config(page_title="Lector", page_icon="📊", layout="wide")
 require_lector()
 
 me = current_user()

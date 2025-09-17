@@ -1,5 +1,3 @@
-from typing import Optional, Set
-
 import streamlit as st
 from f_auth import (
     login,
@@ -7,14 +5,6 @@ from f_auth import (
     sign_out,
     current_user_roles,
 )
-
-ROLE_PAGE_MAP = {
-    "administrador": "pages/administrador.py",
-    "solicitante": "pages/solicitante.py",
-    "aprobador": "pages/aprobador.py",
-    "pagador": "pages/pagador.py",
-    "lector": "pages/lector.py",
-}
 
 ROLE_LABELS = {
     "administrador": "Administración",
@@ -32,57 +22,111 @@ ROLE_PRIORITY = [
     "lector",
 ]
 
+ROLE_PAGE_CONFIG = {
+    "administrador": {
+        "path": "pages/administrador.py",
+        "icon": "🛡️",
+    },
+    "solicitante": {
+        "path": "pages/solicitante.py",
+        "icon": "🧾",
+    },
+    "aprobador": {
+        "path": "pages/aprobador.py",
+        "icon": "✅",
+    },
+    "pagador": {
+        "path": "pages/pagador.py",
+        "icon": "💸",
+    },
+    "lector": {
+        "path": "pages/lector.py",
+        "icon": "📊",
+    },
+}
 
-def _first_page_for_roles(roles: Set[str]) -> Optional[str]:
-    for role in ROLE_PRIORITY:
-        if role in roles:
-            return ROLE_PAGE_MAP[role]
-    return None
 
-st.set_page_config(page_icon="📧", layout="centered")
+def _render_login_page():
+    st.write("**Pagos • Iniciar sesión**")
 
-st.write("**Pagos • Iniciar sesión**")
+    with st.form("login_form", clear_on_submit=False):
+        email = st.text_input("Email", placeholder="tu@empresa.com")
+        password = st.text_input("Contraseña", type="password")
+        submitted = st.form_submit_button("Entrar")
+        if submitted:
+            if login(email, password):
+                st.rerun()
+            else:
+                st.error("Wrong credentials")
+
+
+def _render_no_roles_page():
+    st.warning(
+        "Tu usuario no tiene roles asignados todavía. "
+        "Pide apoyo a un administrador."
+    )
+
+
+def _render_missing_pages_page():
+    st.error("No se encontró una página asignada para tus roles.")
+
+
+st.set_page_config(page_icon="📧", layout="wide")
 
 user = current_user()
+pages = []
+nav_position = "top"
+
 if user:
     with st.sidebar:
         st.write(f"Conectado: **{user['email']}**")
         if st.button("Cerrar sesión"):
             sign_out()
             st.rerun()
+
     roles = current_user_roles()
     if not roles:
-        st.warning(
-            "Tu usuario no tiene roles asignados todavía. "
-            "Pide apoyo a un administrador."
-        )
-        st.stop()
-
-    st.success("¡Listo! Ya estás autenticado.")
-    st.write("Selecciona una sección para continuar:")
-    for role in ROLE_PRIORITY:
-        if role in roles:
-            st.page_link(ROLE_PAGE_MAP[role], label=f"{ROLE_LABELS[role]}")
-    st.stop()
-
-with st.form("login_form", clear_on_submit=False):
-    email = st.text_input("Email", placeholder="tu@empresa.com")
-    password = st.text_input("Contraseña", type="password")
-    submitted = st.form_submit_button("Entrar")
-    if submitted:
-        if login(email, password):
-            roles = current_user_roles()
-            if not roles:
-                st.warning(
-                    "Inicio de sesión exitoso, pero tu usuario aún no tiene roles. "
-                    "Pide apoyo a un administrador."
+        pages = [
+            st.Page(
+                _render_no_roles_page,
+                title="Sin roles asignados",
+                icon=":material/warning:",
+                default=True,
+            )
+        ]
+    else:
+        for role in ROLE_PRIORITY:
+            if role not in roles:
+                continue
+            config = ROLE_PAGE_CONFIG[role]
+            pages.append(
+                st.Page(
+                    config["path"],
+                    title=ROLE_LABELS[role],
+                    icon=config.get("icon") or "",
+                    default=len(pages) == 0,
                 )
-                st.stop()
+            )
 
-            target = _first_page_for_roles(roles)
-            if target:
-                st.switch_page(target)
-            else:
-                st.error("No se encontró una página asignada para tus roles.")
-        else:
-            st.error("Wrong credentials")
+        if not pages:
+            pages = [
+                st.Page(
+                    _render_missing_pages_page,
+                    title="Página no disponible",
+                    icon=":material/error:",
+                    default=True,
+                )
+            ]
+else:
+    nav_position = "hidden"
+    pages = [
+        st.Page(
+            _render_login_page,
+            title="Iniciar sesión",
+            icon=":material/login:",
+            default=True,
+        )
+    ]
+
+pg = st.navigation(pages, position=nav_position)
+pg.run()

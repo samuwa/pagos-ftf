@@ -22,8 +22,6 @@ from f_read import (
 from f_cud import update_expense_status, add_expense_comment
 
 
-
-st.set_page_config(page_title="Aprobador", page_icon="✅", layout="wide")
 require_aprobador()
 
 me = current_user()

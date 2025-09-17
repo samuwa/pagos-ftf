@@ -22,7 +22,6 @@ from f_read import (
 from f_cud import create_expense, add_expense_comment
 
 # ===== Config =====
-st.set_page_config(page_title="Solicitudes", page_icon="🧾", layout="wide")
 require_solicitante()
 
 st.write("**Solicitudes**")

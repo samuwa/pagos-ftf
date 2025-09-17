@@ -28,7 +28,6 @@ from f_read import (
 
 from f_cud import mark_expense_as_paid, add_expense_comment, update_expense_status
 
-st.set_page_config(page_title="Pagador", page_icon="💸", layout="wide")
 require_pagador()
 
 me = current_user()

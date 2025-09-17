@@ -18,7 +18,6 @@ from f_cud import (
     create_person,
 )
 
-st.set_page_config(page_icon="🛡️", layout="wide")
 require_administrador()
 
 st.write("**Administración**")

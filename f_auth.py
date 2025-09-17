@@ -1,7 +1,7 @@
 import streamlit as st
 from supabase import create_client, Client
 import os
-from typing import Optional, Set, Dict, Any
+from typing import Optional, Dict, Any, Set
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
@@ -18,6 +18,11 @@ def get_client() -> Client:
 
 # ---------- Login / Session ----------
 
+def _roles_cache() -> Dict[str, Set[str]]:
+    """Return the cache dict stored in session_state."""
+    return st.session_state.setdefault("roles_cache", {})
+
+
 def login(email: str, password: str) -> Optional[Dict[str, Any]]:
     """Validate email/password against users table. Returns user row or None."""
     sb = get_client()
@@ -33,6 +38,8 @@ def login(email: str, password: str) -> Optional[Dict[str, Any]]:
     if rows:
         user = rows[0]
         st.session_state["user"] = user
+        # Preload the user's roles so that navigation can respect them immediately.
+        user_roles(user["id"], force_refresh=True)
         return user
     return None
 
@@ -43,7 +50,14 @@ def current_user() -> Optional[Dict[str, Any]]:
 
 # --- Role helpers (Spanish) ---
 
-def user_roles(user_id: str) -> set[str]:
+def user_roles(user_id: str, *, force_refresh: bool = False) -> Set[str]:
+    if not user_id:
+        return set()
+
+    cache = _roles_cache()
+    if not force_refresh and user_id in cache:
+        return cache[user_id]
+
     sb = get_client()
     res = (
         sb.schema("public")
@@ -52,13 +66,20 @@ def user_roles(user_id: str) -> set[str]:
         .eq("user_id", user_id)
         .execute()
     )
-    return {row["role"] for row in (res.data or [])}
+    roles = {row["role"] for row in (res.data or [])}
+    cache[user_id] = roles
+    return roles
 
-def has_role(role_es: str) -> bool:
+
+def current_user_roles(*, force_refresh: bool = False) -> Set[str]:
     user = current_user()
     if not user:
-        return False
-    return role_es in user_roles(user["id"])
+        return set()
+    return user_roles(user["id"], force_refresh=force_refresh)
+
+
+def has_role(role_es: str) -> bool:
+    return role_es in current_user_roles()
 
 def es_administrador() -> bool: return has_role("administrador")
 def es_solicitante()  -> bool: return has_role("solicitante")

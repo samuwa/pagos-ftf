@@ -30,7 +30,7 @@ def _render_download(
 # ==========================
 
 def is_registered_email(email: str) -> bool:
-    sb = get_client(use_session=False)
+    sb = get_client()
     q = (
         sb.table("app_users")
         .select("email")

@@ -1,5 +1,3 @@
-from typing import Optional, Set
-
 import streamlit as st
 from f_auth import (
     login,
@@ -7,14 +5,6 @@ from f_auth import (
     sign_out,
     current_user_roles,
 )
-
-ROLE_PAGE_MAP = {
-    "administrador": "pages/administrador.py",
-    "solicitante": "pages/solicitante.py",
-    "aprobador": "pages/aprobador.py",
-    "pagador": "pages/pagador.py",
-    "lector": "pages/lector.py",
-}
 
 ROLE_LABELS = {
     "administrador": "Administración",
@@ -32,16 +22,30 @@ ROLE_PRIORITY = [
     "lector",
 ]
 
-
-def _first_page_for_roles(roles: Set[str]) -> Optional[str]:
-    for role in ROLE_PRIORITY:
-        if role in roles:
-            return ROLE_PAGE_MAP[role]
-    return None
+ROLE_PAGE_CONFIG = {
+    "administrador": {
+        "path": "pages/administrador.py",
+        "icon": "🛡️",
+    },
+    "solicitante": {
+        "path": "pages/solicitante.py",
+        "icon": "🧾",
+    },
+    "aprobador": {
+        "path": "pages/aprobador.py",
+        "icon": "✅",
+    },
+    "pagador": {
+        "path": "pages/pagador.py",
+        "icon": "💸",
+    },
+    "lector": {
+        "path": "pages/lector.py",
+        "icon": "📊",
+    },
+}
 
 st.set_page_config(page_icon="📧", layout="centered")
-
-st.write("**Pagos • Iniciar sesión**")
 
 user = current_user()
 if user:
@@ -58,12 +62,29 @@ if user:
         )
         st.stop()
 
-    st.success("¡Listo! Ya estás autenticado.")
-    st.write("Selecciona una sección para continuar:")
+    available_pages = []
     for role in ROLE_PRIORITY:
-        if role in roles:
-            st.page_link(ROLE_PAGE_MAP[role], label=f"{ROLE_LABELS[role]}")
+        if role not in roles:
+            continue
+        config = ROLE_PAGE_CONFIG[role]
+        available_pages.append(
+            st.Page(
+                config["path"],
+                title=ROLE_LABELS[role],
+                icon=config.get("icon") or "",
+                default=len(available_pages) == 0,
+            )
+        )
+
+    if not available_pages:
+        st.error("No se encontró una página asignada para tus roles.")
+        st.stop()
+
+    pg = st.navigation(available_pages, position="top")
+    pg.run()
     st.stop()
+
+st.write("**Pagos • Iniciar sesión**")
 
 with st.form("login_form", clear_on_submit=False):
     email = st.text_input("Email", placeholder="tu@empresa.com")
@@ -79,10 +100,6 @@ with st.form("login_form", clear_on_submit=False):
                 )
                 st.stop()
 
-            target = _first_page_for_roles(roles)
-            if target:
-                st.switch_page(target)
-            else:
-                st.error("No se encontró una página asignada para tus roles.")
+            st.rerun()
         else:
             st.error("Wrong credentials")

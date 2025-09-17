@@ -225,61 +225,87 @@ with tab2:
             index=estados_pagador.index(exp["status"]) if exp["status"] in estados_pagador else 0,
         )
 
-        payment_date = date.today()
+        existing_payment_date_raw = exp.get("payment_date")
+        existing_payment_date = None
+        if existing_payment_date_raw:
+            try:
+                existing_payment_date = pd.to_datetime(existing_payment_date_raw).date()
+            except Exception:
+                existing_payment_date = None
+
+        payment_date = existing_payment_date or date.today()
         if new_status == "pagado":
-            hoy = st.checkbox("fecha de pago hoy", value=True)
-            if not hoy:
-                payment_date = st.date_input("Fecha de pago", value=date.today())
+            hoy = st.checkbox(
+                "fecha de pago hoy",
+                value=existing_payment_date is None,
+            )
+            if hoy:
+                payment_date = date.today()
+            else:
+                payment_date = st.date_input(
+                    "Fecha de pago",
+                    value=payment_date,
+                )
+        else:
+            payment_date = None
 
         pay_file = st.file_uploader(
-            "Comprobante de pago (obligatorio si marcas 'Pagado')",
+            "Comprobante de pago (opcional)",
             type=["pdf", "png", "jpg", "jpeg", "webp"],
         )
         comment = st.text_area("Comentario (opcional)", key="pagador_comment")
 
         if st.button("Guardar cambios", type="primary", use_container_width=True):
             try:
-                # Solo comentario
-                if new_status == exp["status"] and (comment or "").strip() and not pay_file:
-                    add_expense_comment(expense_id, user_id, comment.strip())
-                    st.success("Comentario agregado.")
-                    st.session_state.pagador_reset = True
-                    st.rerun()
+                comment_clean = (comment or "").strip()
+                if new_status == "pagado":
+                    payment_doc_key = None
+                    if pay_file:
+                        sb = get_client()
+                        bucket = "payments"
+                        file_id = uuid.uuid4().hex + Path(pay_file.name).suffix
+                        sb.storage.from_(bucket).upload(
+                            file_id,
+                            pay_file.getvalue(),
+                            {"content-type": pay_file.type},
+                        )
+                        payment_doc_key = file_id
 
-                # Marcar como pagado → requiere archivo
-                elif new_status == "pagado":
-                    if not pay_file:
-                        st.error("Debes adjuntar un comprobante para marcar como pagado.")
-                        st.stop()
+                    payment_date_dt = payment_date or date.today()
+                    payment_date_changed = False
+                    if new_status != exp["status"]:
+                        payment_date_changed = True
+                    elif existing_payment_date:
+                        payment_date_changed = payment_date_dt != existing_payment_date
+                    else:
+                        payment_date_changed = True
 
-                    # Subir archivo al bucket 'payments' con un identificador único
-                    sb = get_client()
-                    bucket = "payments"
-                    file_id = uuid.uuid4().hex + Path(pay_file.name).suffix
-                    sb.storage.from_(bucket).upload(
-                        file_id,
-                        pay_file.getvalue(),
-                        {"content-type": pay_file.type},
-                    )
-
-                    # Actualizar estado + payment_doc_key y log
-                    mark_expense_as_paid(
-                        expense_id=expense_id,
-                        actor_id=user_id,
-                        payment_doc_key=file_id,
-                        payment_date=payment_date.strftime("%Y-%m-%d"),
-                        comment=(comment or "").strip() or None,
-                    )
-                    st.success("Solicitud marcada como pagada.")
-                    st.session_state.pagador_reset = True
-                    st.rerun()
-
-                # Cambiar de pagado → aprobado (raro) o simplemente de aprobado sin archivo
+                    if new_status != exp["status"] or payment_doc_key or payment_date_changed:
+                        mark_expense_as_paid(
+                            expense_id=expense_id,
+                            actor_id=user_id,
+                            payment_doc_key=payment_doc_key,
+                            payment_date=payment_date_dt.strftime("%Y-%m-%d"),
+                            comment=comment_clean or None,
+                        )
+                        msg = "Solicitud marcada como pagada."
+                        if new_status == exp["status"]:
+                            msg = "Solicitud actualizada."
+                        st.success(msg)
+                        st.session_state.pagador_reset = True
+                        st.rerun()
+                    elif comment_clean:
+                        add_expense_comment(expense_id, user_id, comment_clean)
+                        st.success("Comentario agregado.")
+                        st.session_state.pagador_reset = True
+                        st.rerun()
+                    else:
+                        st.info("No hay cambios que guardar.")
                 else:
-                    # Si baja a 'aprobado' no hay comprobante; si sube a 'pagado' ya lo tratamos arriba
-                    # En este caso (aprobado) permitimos solo comentario adicional
-                    if (comment or "").strip():
-                        add_expense_comment(expense_id, user_id, comment.strip())
+                    if pay_file:
+                        st.warning("El comprobante de pago solo se adjunta al marcar como pagado.")
+                    if comment_clean:
+                        add_expense_comment(expense_id, user_id, comment_clean)
                         st.success("Comentario agregado.")
                         st.session_state.pagador_reset = True
                         st.rerun()

@@ -256,28 +256,30 @@ def update_expense_status(expense_id: str, actor_id: str, new_status: str, comme
 def mark_expense_as_paid(
     expense_id: str,
     actor_id: str,
-    payment_doc_key: str,
+    payment_doc_key: Optional[str],
     payment_date: str,
     comment: Optional[str] = None,
 ) -> None:
     """
-    Actualiza el expense a 'pagado', guarda ``payment_doc_key`` con el nombre
-    de archivo UUID en la raíz del bucket ``payments`` (sin ruta de carpeta),
-    establece ``payment_date`` y registra un log.
+    Actualiza el expense a 'pagado'. Si se proporciona ``payment_doc_key``
+    (nombre de archivo UUID en la raíz del bucket ``payments``) también se
+    actualiza el comprobante. Siempre establece ``payment_date`` y registra un
+    log.
 
     """
-    if not (expense_id and actor_id and (payment_doc_key or "").strip()):
+    if not (expense_id and actor_id and (payment_date or "").strip()):
         raise ValueError("Faltan datos para marcar como pagado.")
 
     sb = get_client()
-    sb.schema("public").table("expenses").update(
-        {
-            "status": "pagado",
-            "payment_doc_key": payment_doc_key.strip(),
-            "paid_by": actor_id,
-            "payment_date": payment_date,
-        }
-    ).eq("id", expense_id).execute()
+    update_payload = {
+        "status": "pagado",
+        "paid_by": actor_id,
+        "payment_date": payment_date,
+    }
+    if payment_doc_key and payment_doc_key.strip():
+        update_payload["payment_doc_key"] = payment_doc_key.strip()
+
+    sb.schema("public").table("expenses").update(update_payload).eq("id", expense_id).execute()
 
     create_expense_log(expense_id, actor_id, message="Solicitud pagada")
     if comment and comment.strip():

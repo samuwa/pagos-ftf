@@ -238,79 +238,69 @@ with tab2:
             if not hoy:
                 payment_date = st.date_input("Fecha de pago", value=date.today())
 
-        pay_file = st.file_uploader(
-            "Comprobante de pago (obligatorio si marcas 'Pagado')",
-            type=["pdf", "png", "jpg", "jpeg", "webp"],
-        )
-        use_receipt_as_payment = False
-        if rec_key:
-            use_receipt_as_payment = st.checkbox(
-                "Usar el documento de respaldo como comprobante de pago",
-                key="pagador_use_receipt",
+        has_payment_doc = bool(pay_key)
+        update_payment_doc = False
+        pay_file = None
+        if has_payment_doc:
+            update_payment_doc = st.checkbox("Actualizar comprobante de pago")
+            if update_payment_doc:
+                pay_file = st.file_uploader(
+                    "Nuevo comprobante de pago",
+                    type=["pdf", "png", "jpg", "jpeg", "webp"],
+                    key="pagador_payment_doc",
+                )
+        else:
+            pay_file = st.file_uploader(
+                "Comprobante de pago (obligatorio si marcas 'Pagado')",
+                type=["pdf", "png", "jpg", "jpeg", "webp"],
+                key="pagador_payment_doc",
             )
         comment = st.text_area("Comentario (opcional)", key="pagador_comment")
 
         if st.button("Guardar cambios", type="primary", use_container_width=True):
             try:
-                comment_clean = (comment or "").strip()
+                trimmed_comment = (comment or "").strip()
+                requires_new_file = new_status == "pagado" and (not has_payment_doc or update_payment_doc)
+
+                if requires_new_file and not pay_file:
+                    st.error("Debes adjuntar un comprobante para marcar como pagado.")
+                    st.stop()
 
                 # Solo comentario
                 if (
                     new_status == exp["status"]
-                    and (comment or "").strip()
-                    and not pay_file
-                    and not use_receipt_as_payment
+                    and trimmed_comment
+                    and not requires_new_file
                 ):
-                    add_expense_comment(expense_id, user_id, comment.strip())
+                    add_expense_comment(expense_id, user_id, trimmed_comment)
                     st.success("Comentario agregado.")
                     st.session_state.pagador_reset = True
                     st.rerun()
 
                 # Marcar como pagado → requiere archivo
                 elif new_status == "pagado":
-                    sb = get_client()
-                    bucket = "payments"
-                    file_id = None
+                    payment_doc_key = pay_key
 
-                    if pay_file:
+                    if requires_new_file and pay_file:
+                        # Subir archivo al bucket 'payments' con un identificador único
+                        sb = get_client()
+                        bucket = "payments"
                         file_id = uuid.uuid4().hex + Path(pay_file.name).suffix
                         sb.storage.from_(bucket).upload(
                             file_id,
                             pay_file.getvalue(),
                             {"content-type": pay_file.type},
                         )
-                    elif use_receipt_as_payment and rec_key:
-                        try:
-                            receipt_bytes = sb.storage.from_("quotes").download(rec_key)
-                        except Exception:
-                            st.error(
-                                "No se pudo reutilizar el documento de respaldo como comprobante de pago."
-                            )
-                            st.stop()
 
-                        suffix = Path(rec_key).suffix
-                        file_id = uuid.uuid4().hex + suffix
-                        content_type = (
-                            mimetypes.guess_type(rec_key)[0] or "application/octet-stream"
-                        )
-                        sb.storage.from_(bucket).upload(
-                            file_id,
-                            receipt_bytes,
-                            {"content-type": content_type},
-                        )
-                    else:
-                        st.error(
-                            "Debes adjuntar un comprobante o seleccionar usar el documento de respaldo para marcar como pagado."
-                        )
-                        st.stop()
+                        payment_doc_key = file_id
 
                     # Actualizar estado + payment_doc_key y log
                     mark_expense_as_paid(
                         expense_id=expense_id,
                         actor_id=user_id,
-                        payment_doc_key=file_id,
+                        payment_doc_key=payment_doc_key,
                         payment_date=payment_date.strftime("%Y-%m-%d"),
-                        comment=(comment or "").strip() or None,
+                        comment=trimmed_comment or None,
                     )
                     st.success("Solicitud marcada como pagada.")
                     st.session_state.pagador_reset = True
@@ -318,19 +308,10 @@ with tab2:
 
                 # Actualizar a aprobado/rechazado
                 else:
-                    status_changed = new_status != exp["status"]
-                    if status_changed:
-                        update_expense_status(
-                            expense_id=expense_id,
-                            actor_id=user_id,
-                            new_status=new_status,
-                            comment=comment_clean or None,
-                        )
-                        st.success("Estado actualizado.")
-                        st.session_state.pagador_reset = True
-                        st.rerun()
-                    elif comment_clean:
-                        add_expense_comment(expense_id, user_id, comment_clean)
+                    # Si baja a 'aprobado' no hay comprobante; si sube a 'pagado' ya lo tratamos arriba
+                    # En este caso (aprobado) permitimos solo comentario adicional
+                    if trimmed_comment:
+                        add_expense_comment(expense_id, user_id, trimmed_comment)
                         st.success("Comentario agregado.")
                         st.session_state.pagador_reset = True
                         st.rerun()

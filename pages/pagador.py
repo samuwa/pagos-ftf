@@ -1,6 +1,7 @@
 # pages/pagador.py
 # Rol Pagador: métricas, listas por estado, detalles+marcar pagado, historial
 
+import mimetypes
 import pandas as pd
 import streamlit as st
 import uuid
@@ -105,6 +106,8 @@ with tab2:
     if st.session_state.get("pagador_reset"):
         st.session_state.pagador_sel = ""
         st.session_state.pagador_comment = ""
+        st.session_state.pagador_use_receipt = False
+        st.session_state.pagador_selected_expense_id = None
         st.session_state.pagador_reset = False
 
     # Elegir estado desde el cual seleccionar (tiene sentido 'aprobado' y 'pagado')
@@ -135,11 +138,18 @@ with tab2:
         st.stop()
     expense_id = opts[sel_label]
 
+    prev_selected = st.session_state.get("pagador_selected_expense_id")
+    if prev_selected != expense_id:
+        st.session_state.pagador_selected_expense_id = expense_id
+        st.session_state.pagador_use_receipt = False
+
     exp = get_expense_by_id_for_approver(expense_id)
     if not exp:
         st.error("No se encontró la solicitud seleccionada.")
         st.stop()
 
+    rec_key = exp.get("supporting_doc_key")
+    pay_key = exp.get("payment_doc_key")
     left, mid, right = st.columns([2, 1, 3])
 
     # ---- Izquierda: detalles + docs + logs + comentarios
@@ -160,9 +170,6 @@ with tab2:
             )
         st.markdown(detalles_md)
 
-        rec_key = exp.get("supporting_doc_key")
-
-        pay_key = exp.get("payment_doc_key")
         cols_files = st.columns(2)
         with cols_files[0]:
             _render_download(rec_key, "Documento de respaldo", signed_url_for_receipt)
@@ -235,12 +242,23 @@ with tab2:
             "Comprobante de pago (obligatorio si marcas 'Pagado')",
             type=["pdf", "png", "jpg", "jpeg", "webp"],
         )
+        use_receipt_as_payment = False
+        if rec_key:
+            use_receipt_as_payment = st.checkbox(
+                "Usar el documento de respaldo como comprobante de pago",
+                key="pagador_use_receipt",
+            )
         comment = st.text_area("Comentario (opcional)", key="pagador_comment")
 
         if st.button("Guardar cambios", type="primary", use_container_width=True):
             try:
                 # Solo comentario
-                if new_status == exp["status"] and (comment or "").strip() and not pay_file:
+                if (
+                    new_status == exp["status"]
+                    and (comment or "").strip()
+                    and not pay_file
+                    and not use_receipt_as_payment
+                ):
                     add_expense_comment(expense_id, user_id, comment.strip())
                     st.success("Comentario agregado.")
                     st.session_state.pagador_reset = True
@@ -248,19 +266,41 @@ with tab2:
 
                 # Marcar como pagado → requiere archivo
                 elif new_status == "pagado":
-                    if not pay_file:
-                        st.error("Debes adjuntar un comprobante para marcar como pagado.")
-                        st.stop()
-
-                    # Subir archivo al bucket 'payments' con un identificador único
                     sb = get_client()
                     bucket = "payments"
-                    file_id = uuid.uuid4().hex + Path(pay_file.name).suffix
-                    sb.storage.from_(bucket).upload(
-                        file_id,
-                        pay_file.getvalue(),
-                        {"content-type": pay_file.type},
-                    )
+                    file_id = None
+
+                    if pay_file:
+                        file_id = uuid.uuid4().hex + Path(pay_file.name).suffix
+                        sb.storage.from_(bucket).upload(
+                            file_id,
+                            pay_file.getvalue(),
+                            {"content-type": pay_file.type},
+                        )
+                    elif use_receipt_as_payment and rec_key:
+                        try:
+                            receipt_bytes = sb.storage.from_("quotes").download(rec_key)
+                        except Exception:
+                            st.error(
+                                "No se pudo reutilizar el documento de respaldo como comprobante de pago."
+                            )
+                            st.stop()
+
+                        suffix = Path(rec_key).suffix
+                        file_id = uuid.uuid4().hex + suffix
+                        content_type = (
+                            mimetypes.guess_type(rec_key)[0] or "application/octet-stream"
+                        )
+                        sb.storage.from_(bucket).upload(
+                            file_id,
+                            receipt_bytes,
+                            {"content-type": content_type},
+                        )
+                    else:
+                        st.error(
+                            "Debes adjuntar un comprobante o seleccionar usar el documento de respaldo para marcar como pagado."
+                        )
+                        st.stop()
 
                     # Actualizar estado + payment_doc_key y log
                     mark_expense_as_paid(

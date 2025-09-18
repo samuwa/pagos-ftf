@@ -79,8 +79,9 @@ st.session_state.setdefault("pagador_resumen_refresh_token", 0)
 st.session_state.setdefault("pagador_historial_refresh_token", 0)
 st.session_state.setdefault("pagador_resumen_estado", "aprobado")
 st.session_state.setdefault("pagador_estado_sel", "aprobado")
+st.session_state.setdefault("pagador_last_estado_sel", "aprobado")
 st.session_state.setdefault("pagador_sel", "")
-st.session_state.setdefault("pagador_comment", "")
+st.session_state.setdefault("pagador_comment_version", 0)
 st.session_state.setdefault("pagador_selected_expense_id", None)
 
 
@@ -149,6 +150,12 @@ def pagador_detalle_fragment():
         horizontal=True,
         key="pagador_estado_sel",
     )
+
+    last_estado = st.session_state.get("pagador_last_estado_sel")
+    if last_estado != estado_sel:
+        st.session_state.pagador_selected_expense_id = None
+        st.session_state.pagador_sel = ""
+    st.session_state.pagador_last_estado_sel = estado_sel
 
     state_rows = list_expenses_for_status(status=estado_sel) or []
     rows = list(state_rows)
@@ -375,7 +382,9 @@ def pagador_detalle_fragment():
                             "El archivo cargado se ignorará porque se utilizará el documento de respaldo como comprobante."
                         )
 
-                    comment = st.text_area("Comentario (opcional)", key="pagador_comment")
+                    comment_version = st.session_state.get("pagador_comment_version", 0)
+                    comment_key = f"pagador_comment_{expense_id}_{comment_version}"
+                    comment = st.text_area("Comentario (opcional)", key=comment_key)
 
                     if st.button("Guardar cambios", type="primary", use_container_width=True):
                         try:
@@ -448,10 +457,15 @@ def pagador_detalle_fragment():
                                     st.info("No hay cambios que guardar.")
 
                             if triggered_refresh:
-                                st.session_state.pagador_comment = ""
+                                prefix = f"pagador_comment_{expense_id}_"
+                                for key in list(st.session_state.keys()):
+                                    if key.startswith(prefix):
+                                        st.session_state.pop(key)
+                                st.session_state.pagador_comment_version += 1
                                 st.session_state.pagador_estado_sel = new_status
+                                st.session_state.pagador_last_estado_sel = new_status
                                 st.session_state.pagador_sel = _expense_label(exp)
-                                st.rerun(scope="fragment")
+                                st.rerun()
                         except Exception as e:
                             st.error(f"No se pudo actualizar: {e}")
     else:

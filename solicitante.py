@@ -88,7 +88,7 @@ def solicitud_nueva_fragment():
     col_a, col_b = st.columns([1, 1])
     with col_a:
         amount = st.number_input(
-            "Monto *", min_value=0.00, step=0.01, format="%.2f", key="monto"
+            "Monto *", key="monto"
         )
     with col_b:
         st.session_state["categoria"] = categoria

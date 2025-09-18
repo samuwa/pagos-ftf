@@ -20,6 +20,8 @@ from f_cud import (
 
 require_administrador()
 
+st.set_page_config(layout="wide")
+
 st.write("**Administración**")
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")

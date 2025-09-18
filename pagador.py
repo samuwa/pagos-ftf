@@ -30,6 +30,8 @@ from f_cud import mark_expense_as_paid, add_expense_comment, update_expense_stat
 
 require_pagador()
 
+st.set_page_config(layout="wide")
+
 me = current_user()
 if not me:
     st.stop()

@@ -19,6 +19,8 @@ from f_read import (
 
 require_lector()
 
+st.set_page_config(layout="wide")
+
 me = current_user()
 if not me:
     st.stop()

@@ -24,23 +24,23 @@ ROLE_PRIORITY = [
 
 ROLE_PAGE_CONFIG = {
     "administrador": {
-        "path": "pages/administrador.py",
+        "path": "administrador.py",
         "icon": "🛡️",
     },
     "solicitante": {
-        "path": "pages/solicitante.py",
+        "path": "solicitante.py",
         "icon": "🧾",
     },
     "aprobador": {
-        "path": "pages/aprobador.py",
+        "path": "aprobador.py",
         "icon": "✅",
     },
     "pagador": {
-        "path": "pages/pagador.py",
+        "path": "pagador.py",
         "icon": "💸",
     },
     "lector": {
-        "path": "pages/lector.py",
+        "path": "lector.py",
         "icon": "📊",
     },
 }

@@ -24,6 +24,8 @@ from f_cud import update_expense_status, add_expense_comment
 
 require_aprobador()
 
+st.set_page_config(layout="wide")
+
 me = current_user()
 if not me:
     st.stop()

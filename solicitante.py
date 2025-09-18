@@ -24,6 +24,8 @@ from f_cud import create_expense, add_expense_comment
 # ===== Config =====
 require_solicitante()
 
+st.set_page_config(layout="wide")
+
 st.write("**Solicitudes**")
 
 me = current_user()

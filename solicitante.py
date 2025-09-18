@@ -3,7 +3,7 @@
 
 import uuid
 from pathlib import Path
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 import streamlit as st
 import pandas as pd
 
@@ -49,7 +49,7 @@ def solicitud_nueva_fragment():
     if st.session_state.get("reset_form"):
         st.session_state.reset_form = False
         st.session_state["sup_name"] = ""
-        st.session_state["monto"] = 0.0
+        st.session_state["monto"] = ""
         st.session_state["descripcion"] = ""
         st.session_state["comentario"] = ""
         st.session_state.pop("archivo", None)
@@ -60,7 +60,9 @@ def solicitud_nueva_fragment():
     if "sup_name" not in st.session_state:
         st.session_state["sup_name"] = ""
     if "monto" not in st.session_state:
-        st.session_state["monto"] = 0.0
+        st.session_state["monto"] = ""
+    elif not isinstance(st.session_state["monto"], str):
+        st.session_state["monto"] = str(st.session_state["monto"])
     if "descripcion" not in st.session_state:
         st.session_state["descripcion"] = ""
     if "comentario" not in st.session_state:
@@ -85,11 +87,20 @@ def solicitud_nueva_fragment():
     supplier_id = sel_sup["id"] if sel_sup else None
     categoria = sel_sup["category"] if sel_sup else ""
 
+    amount = None
+    amount_is_numeric = False
     col_a, col_b = st.columns([1, 1])
     with col_a:
-        amount = st.number_input(
+        amount_input = st.text_input(
             "Monto *", key="monto"
         )
+        amount_input = (amount_input or "").strip()
+        if amount_input:
+            try:
+                amount = Decimal(amount_input)
+                amount_is_numeric = True
+            except (InvalidOperation, ValueError):
+                amount = None
     with col_b:
         st.session_state["categoria"] = categoria
         st.selectbox(
@@ -146,7 +157,7 @@ def solicitud_nueva_fragment():
         else:
             st.caption("No se encontraron solicitudes similares recientes.")
 
-    disable_submit = (not suppliers) or (reembolso and not personas)
+    disable_submit = (not suppliers) or (reembolso and not personas) or (not amount_is_numeric)
 
     if st.button(
         "Enviar solicitud",
@@ -156,6 +167,8 @@ def solicitud_nueva_fragment():
     ):
         if not supplier_id:
             st.error("Selecciona un proveedor.")
+        elif not amount_is_numeric:
+            st.error("Ingresa un monto numérico válido.")
         elif not amount or amount <= 0:
             st.error("Ingresa un monto válido mayor a cero.")
         elif not categoria:

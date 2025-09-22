@@ -41,20 +41,29 @@ st.write("**Dashboard de gastos pagados**")
 
 col_dates = st.container()
 with col_dates:
-    c1, c2 = st.columns(2)
-    with c1:
-        st.caption("Rango por **fecha de creación**")
+    st.caption("Filtrar por fecha")
+    date_filter_mode = st.radio(
+        "Tipo de fecha",
+        options=("Fecha de creación", "Fecha de pago"),
+        horizontal=True,
+        key="date_filter_mode",
+    )
+
+    default_range = (dt.date.today() - dt.timedelta(days=30), dt.date.today())
+    created_range = None
+    paid_range = None
+
+    if date_filter_mode == "Fecha de creación":
         created_range = st.date_input(
-            "Desde / Hasta (creado)",
-            value=(dt.date.today() - dt.timedelta(days=30), dt.date.today()),
+            "Desde / Hasta",
+            value=default_range,
             key="created_range",
             help="Filtra por expenses.created_at",
         )
-    with c2:
-        st.caption("Rango por **fecha de pago**")
+    else:
         paid_range = st.date_input(
-            "Desde / Hasta (pagado)",
-            value=(dt.date.today() - dt.timedelta(days=30), dt.date.today()),
+            "Desde / Hasta",
+            value=default_range,
             key="paid_range",
             help="Filtra por fecha de marcado como pagado (logs)",
         )
@@ -167,10 +176,16 @@ with tab_detalle:
     show_df = df.copy()
     show_df["Creado"] = show_df["created_at"].map(_fmt_dt)
     show_df["Pagado"] = show_df["paid_at"].map(_fmt_dt)
+    show_df["Documento de respaldo"] = show_df["supporting_doc_key"].map(
+        lambda k: signed_url_for_receipt(k.strip()) if isinstance(k, str) and k.strip() else None
+    )
+    show_df["Comprobante de pago"] = show_df["payment_doc_key"].map(
+        lambda k: signed_url_for_payment(k.strip()) if isinstance(k, str) and k.strip() else None
+    )
     show_df = show_df[[
         "supplier_name", "description", "amount", "category",
         "requested_by_email", "approved_by_email", "paid_by_email",
-        "Creado", "Pagado"
+        "Creado", "Pagado", "Documento de respaldo", "Comprobante de pago"
     ]].rename(columns={
         "supplier_name": "Proveedor",
         "description": "Descripción",
@@ -181,7 +196,23 @@ with tab_detalle:
         "paid_by_email": "Pagador",
     })
 
-    st.dataframe(show_df, use_container_width=True, hide_index=True)
+    st.dataframe(
+        show_df,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Documento de respaldo": st.column_config.LinkColumn(
+                "Documento de respaldo",
+                help="Abrir el documento de respaldo",
+                display_text="Abrir",
+            ),
+            "Comprobante de pago": st.column_config.LinkColumn(
+                "Comprobante de pago",
+                help="Abrir el comprobante de pago",
+                display_text="Abrir",
+            ),
+        },
+    )
 
     # Selector de un gasto
     opt_map = {

@@ -143,6 +143,11 @@ def pagador_detalle_fragment():
     st.write("**Detalles y marcar pagado**")
 
     estado_options = ["aprobado", "pagado", "solicitado", "rechazado"]
+    override_key = "pagador_estado_sel_override"
+    if override_key in st.session_state:
+        override_value = st.session_state.pop(override_key)
+        if override_value in estado_options:
+            st.session_state["pagador_estado_sel"] = override_value
     st.session_state.setdefault("pagador_estado_sel", estado_options[0])
     estado_sel = st.radio(
         "Elegir estado para seleccionar solicitudes:",
@@ -462,7 +467,9 @@ def pagador_detalle_fragment():
                                     if key.startswith(prefix):
                                         st.session_state.pop(key)
                                 st.session_state.pagador_comment_version += 1
-                                st.session_state.pagador_estado_sel = new_status
+                                st.session_state[
+                                    "pagador_estado_sel_override"
+                                ] = new_status
                                 st.session_state.pagador_last_estado_sel = new_status
                                 st.session_state.pagador_sel = _expense_label(exp)
                                 st.rerun()
